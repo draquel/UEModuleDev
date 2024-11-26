@@ -1,0 +1,14 @@
+{
+	"RemapUnityFiles": 
+	{
+		"Module.ComputeShaders.cpp.obj": [
+			"ComputeShaders.init.gen.cpp.obj",
+			"MySimpleComputeShader.gen.cpp.obj",
+			"PerlinNoiseShader.gen.cpp.obj",
+			"PerModuleInline.gen.cpp.obj",
+			"ComputeShaders.cpp.obj",
+			"MySimpleComputeShader.cpp.obj",
+			"PerlinNoiseShader.cpp.obj"
+		]
+	}
+}

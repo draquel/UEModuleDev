@@ -1,0 +1,29 @@
+{
+    "Version": "1.2",
+    "Data": {
+        "Source": "d:\\unreal projects\\moduledev 5.5\\plugins\\shaderlib\\intermediate\\build\\win64\\x64\\unrealeditor\\development\\computeshaders\\module.computeshaders.cpp",
+        "ProvidedModule": "",
+        "PCH": "d:\\unreal projects\\moduledev 5.5\\intermediate\\build\\win64\\x64\\moduledeveditor\\development\\unrealed\\sharedpch.unrealed.project.valapi.cpp20.inclorderunreal5_4.h.pch",
+        "Includes": [
+            "d:\\unreal projects\\moduledev 5.5\\plugins\\shaderlib\\intermediate\\build\\win64\\x64\\unrealeditor\\development\\computeshaders\\definitions.computeshaders.h",
+            "d:\\unreal projects\\moduledev 5.5\\plugins\\shaderlib\\intermediate\\build\\win64\\unrealeditor\\inc\\computeshaders\\uht\\computeshaders.init.gen.cpp",
+            "d:\\unreal projects\\moduledev 5.5\\plugins\\shaderlib\\intermediate\\build\\win64\\unrealeditor\\inc\\computeshaders\\uht\\mysimplecomputeshader.gen.cpp",
+            "d:\\unreal projects\\moduledev 5.5\\plugins\\shaderlib\\source\\computeshaders\\public\\mysimplecomputeshader\\mysimplecomputeshader.h",
+            "d:\\program files\\epic games\\ue_5.5\\engine\\source\\runtime\\engine\\classes\\kismet\\blueprintasyncactionbase.h",
+            "d:\\program files\\epic games\\ue_5.5\\engine\\intermediate\\build\\win64\\unrealeditor\\inc\\engine\\uht\\blueprintasyncactionbase.generated.h",
+            "d:\\program files\\epic games\\ue_5.5\\engine\\source\\runtime\\engine\\classes\\engine\\texturerendertarget2d.h",
+            "d:\\program files\\epic games\\ue_5.5\\engine\\source\\runtime\\engine\\classes\\engine\\texturerendertarget.h",
+            "d:\\program files\\epic games\\ue_5.5\\engine\\intermediate\\build\\win64\\unrealeditor\\inc\\engine\\uht\\texturerendertarget.generated.h",
+            "d:\\program files\\epic games\\ue_5.5\\engine\\intermediate\\build\\win64\\unrealeditor\\inc\\engine\\uht\\texturerendertarget2d.generated.h",
+            "d:\\program files\\epic games\\ue_5.5\\engine\\source\\runtime\\engine\\public\\materials\\materialrenderproxy.h",
+            "d:\\unreal projects\\moduledev 5.5\\plugins\\shaderlib\\intermediate\\build\\win64\\unrealeditor\\inc\\computeshaders\\uht\\mysimplecomputeshader.generated.h",
+            "d:\\unreal projects\\moduledev 5.5\\plugins\\shaderlib\\intermediate\\build\\win64\\unrealeditor\\inc\\computeshaders\\uht\\perlinnoiseshader.gen.cpp",
+            "d:\\unreal projects\\moduledev 5.5\\plugins\\shaderlib\\source\\computeshaders\\public\\perlinnoiseshader\\perlinnoiseshader.h",
+            "d:\\unreal projects\\moduledev 5.5\\plugins\\shaderlib\\intermediate\\build\\win64\\unrealeditor\\inc\\computeshaders\\uht\\perlinnoiseshader.generated.h",
+            "d:\\unreal projects\\moduledev 5.5\\plugins\\shaderlib\\intermediate\\build\\win64\\x64\\unrealeditor\\development\\computeshaders\\permoduleinline.gen.cpp",
+            "d:\\program files\\epic games\\ue_5.5\\engine\\source\\runtime\\core\\public\\hal\\permoduleinline.inl"
+        ],
+        "ImportedModules": [],
+        "ImportedHeaderUnits": []
+    }
+}

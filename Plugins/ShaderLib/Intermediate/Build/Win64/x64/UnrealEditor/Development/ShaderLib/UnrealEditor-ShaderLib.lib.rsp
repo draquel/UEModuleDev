@@ -1,0 +1,13 @@
+/NOLOGO
+/errorReport:prompt
+/MACHINE:x64
+/SUBSYSTEM:WINDOWS
+/DEF
+/NAME:"UnrealEditor-ShaderLib.dll"
+/IGNORE:4221
+/NODEFAULTLIB
+"D:\Unreal Projects\ModuleDev 5.5\Intermediate\Build\Win64\x64\ModuleDevEditor\Development\UnrealEd\SharedPCH.UnrealEd.Project.ValApi.Cpp20.InclOrderUnreal5_4.h.obj"
+"D:\Unreal Projects\ModuleDev 5.5\Plugins\ShaderLib\Intermediate\Build\Win64\x64\UnrealEditor\Development\ShaderLib\Module.ShaderLib.cpp.obj"
+"D:\Unreal Projects\ModuleDev 5.5\Plugins\ShaderLib\Intermediate\Build\Win64\x64\UnrealEditor\Development\ShaderLib\ShaderLib.cpp.obj"
+"D:\Unreal Projects\ModuleDev 5.5\Plugins\ShaderLib\Intermediate\Build\Win64\x64\UnrealEditor\Development\ShaderLib\Default.rc2.res"
+/OUT:"D:\Unreal Projects\ModuleDev 5.5\Plugins\ShaderLib\Intermediate\Build\Win64\x64\UnrealEditor\Development\ShaderLib\UnrealEditor-ShaderLib.lib"
