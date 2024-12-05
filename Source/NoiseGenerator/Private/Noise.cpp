@@ -107,6 +107,19 @@ float UNoise::FilterRigid(float noise)
 	return v * v * 2 - 1;
 }
 
+void UNoise::GetTypeMinMax(NoiseType type, float& min, float& max)
+{
+	switch(type){
+		default:
+		case Perlin:
+			min = -0.45f; max = 0.45f;
+			break;
+		case Simplex:
+			min = -0.8f; max = 0.8f;
+			break;
+	}	
+}
+
 float UNoise::Normalize(float noise, float min = .0f, float max = 1.0f)
 {
 	return (max - min) * ((noise + 1.0f) / 2.0f) + min;
@@ -117,15 +130,7 @@ void UNoise::Normalize(FNoiseMap2d& NoiseMap, NoiseNormalizeMode normalizeMode, 
 {
 	float min;
 	float max;
-	switch(noiseType){
-		default:
-		case Perlin:
-			min = -0.45f; max = 0.45f;
-		break;
-		case Simplex:
-			min = -0.8f; max = 0.8f;
-		break;
-	}
+	GetTypeMinMax(noiseType,min,max);	
 
 	if (normalizeMode != NoNormalization){
 		for(int x = 0; x < NoiseMap.Size.X; x++) {
@@ -153,7 +158,39 @@ void UNoise::Normalize(FNoiseMap2d& NoiseMap, NoiseNormalizeMode normalizeMode, 
 	// return NoiseMap;
 }
 
+void UNoise::Normalize(FNoiseMap3d& NoiseMap, NoiseNormalizeMode normalizeMode, NoiseType noiseType)
+{
+	float min;
+	float max;
+	GetTypeMinMax(noiseType,min,max);	
 
+	if (normalizeMode != NoNormalization){
+		for(int x = 0; x < NoiseMap.Size.X; x++) {
+			for(int y = 0; y < NoiseMap.Size.Y; y++) {
+				for(int z = 0; z < NoiseMap.Size.Z; z++) {
+					FIntVector index = FIntVector(FMath::Floor(NoiseMap.Position.X) + x, FMath::Floor(NoiseMap.Position.Y) + y, FMath::Floor(NoiseMap.Position.Z) + z);
+					switch (normalizeMode){
+					case Local:
+						NoiseMap.Map[index] = (1-(-1))/(NoiseMap.MinMax.max-NoiseMap.MinMax.min)*(NoiseMap.Map[index]-NoiseMap.MinMax.min)+(-1);
+						break;
+					case LocalPositive:
+						NoiseMap.Map[index] = (NoiseMap.Map[index]-NoiseMap.MinMax.min)/(NoiseMap.MinMax.max-NoiseMap.MinMax.min);
+						break;
+					case Global:
+						NoiseMap.Map[index] = (1-(-1))/(max-min)*(NoiseMap.Map[index]-min)+(-1);
+						break;
+					case GlobalPositive:
+						NoiseMap.Map[index] = (NoiseMap.Map[index] - (min)) / (max - (min));
+						break;
+					default:
+						break;
+					}
+				}
+			}
+		}
+	}
+	// return NoiseMap;
+}
 
 //Maps
 FNoiseMap2d UNoise::GenerateMap2D(FIntVector pos, FIntVector2 mapSize, FNoiseSettings* NoiseSettings)
@@ -257,30 +294,22 @@ UTexture2D* UNoise::GenerateTexture(FNoiseMap2d* NoiseMap, UCurveLinearColor* Co
 	return texture;	
 }
 
-TMap<FIntVector, float> UNoise::GenerateMap3D(FIntVector pos, FIntVector mapSize, FNoiseSettings* NoiseSettings)
+FNoiseMap3d UNoise::GenerateMap3D(FIntVector pos, FIntVector mapSize, FNoiseSettings* NoiseSettings)
 {
-	TMap<FIntVector, float> map;
-	FMinMax MinMax;
+	FNoiseMap3d NoiseMap = FNoiseMap3d(pos,mapSize);
 	for(int x = pos.X; x < pos.X+mapSize.X; x++) {
 		for(int y = pos.Y; y < pos.Y+mapSize.Y; y++) {
 			for(int z = pos.Z; z < pos.Z+mapSize.Z; z++) {
 				FIntVector index = FIntVector(x, y, z);
-				map.Add(index,Evaluate3D(FVector(x,y,z),NoiseSettings));
-				MinMax.Add(map[index]);
+				NoiseMap.Map.Add(index,Evaluate3D(FVector(x,y,z),NoiseSettings));
+				NoiseMap.MinMax.Add(NoiseMap.Map[index]);
 			}
 		}
 	}
-	if (NoiseSettings->normalizeMode == NoiseNormalizeMode::Local){
-		for(int x = pos.X; x < pos.X+mapSize.X; x++) {
-			for(int y = pos.Y; y < pos.Y+mapSize.Y; y++) {
-				for(int z = pos.Z; z < pos.Z+mapSize.Z; z++) {
-					FIntVector index = FIntVector(x, y, z);
-					map[index] = Normalize(map[index],MinMax.min,MinMax.max);
-				}
-			}
-		}
-	}
-	return map;
+
+	Normalize(NoiseMap,NoiseSettings->normalizeMode,NoiseSettings->type);
+	
+	return NoiseMap;
 }
 
 //Poisson

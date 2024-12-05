@@ -136,6 +136,78 @@ struct FNoiseLayerData
 	}
 };
 
+USTRUCT()
+struct FNoiseMap3d
+{
+	GENERATED_BODY()
+
+	UPROPERTY()	
+	TMap<FIntVector, float> Map;
+
+	UPROPERTY()
+	FIntVector Position;
+
+	UPROPERTY()
+	FIntVector Size;
+
+	UPROPERTY()
+	FMinMax MinMax;
+	
+	// Default constructor
+	FNoiseMap3d()
+	{
+		Map.Empty();
+		MinMax = FMinMax();
+		Size = FIntVector(64, 64,64);
+		Position = FIntVector();
+	}
+
+	FNoiseMap3d(FIntVector InPosition, FIntVector InSize)
+	{
+		Map.Empty();
+		MinMax = FMinMax();
+		Size = InSize;
+		Position = InPosition;
+	}
+
+	FNoiseMap3d(FIntVector InPosition, FIntVector InSize, TArray<float> InMap)
+	{
+		Map.Empty();
+		MinMax = FMinMax();
+		Size = InSize;
+		Position = InPosition;
+		
+		for(int x = 0; x < Size.X; x++) {
+			for(int y = 0; y < Size.Y; y++) {
+				for(int z = 0; z < Size.Z; z++)	{
+					FIntVector index = FIntVector(FMath::Floor(Position.X) + x, FMath::Floor(Position.Y) + y, FMath::Floor(Position.Z) + z);
+					Map.Add(index,InMap[y * Size.X + x]);
+					MinMax.Add(Map[index]);
+				}
+			}
+		}
+	}
+
+	FNoiseMap3d(TMap<FIntVector3, float> InMap, FIntVector InPosition, FIntVector3 InSize, FMinMax InMinMax)
+	{
+		Map = InMap;
+		Position = InPosition;
+		Size = InSize;
+		MinMax = InMinMax;
+	}
+
+	// Copy constructor
+	FNoiseMap3d(const FNoiseMap3d& Other) = default;
+
+	// Move constructor
+	FNoiseMap3d(FNoiseMap3d&& Other) noexcept = default;
+
+	// Copy assignment
+	FNoiseMap3d& operator=(const FNoiseMap3d& Other) = default;
+
+	// Move assignment
+	FNoiseMap3d& operator=(FNoiseMap3d&& Other) noexcept = default;
+};
 UCLASS()
 class NOISEGENERATOR_API UNoise : public UObject
 {
@@ -144,6 +216,8 @@ protected:
 	static FastNoiseLite SetupFastNoise(FNoiseSettings* NoiseSettings);
 	
 	static float FilterRigid(float noise);
+
+	static void GetTypeMinMax(NoiseType type, float& min, float& max);
 
 public:
 	static float Evaluate1D(float x, FNoiseSettings* NoiseSettings);
@@ -159,6 +233,7 @@ public:
 	static float EvaluateFilter(float noise, NoiseFilter filter);
 	static float Normalize(float noise, float min, float max);
 	static void Normalize(FNoiseMap2d& NoiseMap, NoiseNormalizeMode normalizeMode, NoiseType noiseType);
+	static void Normalize(FNoiseMap3d& NoiseMap, NoiseNormalizeMode normalizeMode, NoiseType noiseType);
 
 	static FNoiseMap2d GenerateMap2D(FIntVector pos, FIntVector2 mapSize, FNoiseSettings* NoiseSettings);
 	static FNoiseMap2d GenerateMap2D(FIntVector pos, FIntVector2 mapSize, TArray<FLayeredNoiseSettings>* NoiseSettings);
@@ -168,7 +243,7 @@ public:
 	static UTexture2D* GenerateTexture(FIntVector pos, FIntVector2 mapSize, TArray<FLayeredNoiseSettings>* NoiseSettings, UCurveLinearColor* ColorCurve = nullptr);
 	static UTexture2D* GenerateTexture(FNoiseMap2d* NoiseMap, UCurveLinearColor* ColorCurve = nullptr);
 
-	static TMap<FIntVector,float> GenerateMap3D(FIntVector pos, FIntVector mapSize, FNoiseSettings* NoiseSettings);
+	static FNoiseMap3d GenerateMap3D(FIntVector pos, FIntVector mapSize, FNoiseSettings* NoiseSettings);
 
 	static FVector2D PoissonSample(const FVector2D& center, float minRadius, float maxRadius);
 	static TArray<FVector2D> PoissonDiscSample(const FVector2D& topLeft, const FVector2D& bottomRight, float minDist, int newPointsCount);
