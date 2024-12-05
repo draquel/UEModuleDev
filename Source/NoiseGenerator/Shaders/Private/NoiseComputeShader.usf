@@ -40,13 +40,13 @@ void NoiseComputeShader(uint3 DispatchThreadId : SV_DispatchThreadID, uint Group
     float min = -1.0f;
     float max = 1.0f;
     switch (Type){
-        case 2: //Perlin
+        case 1: //Perlin
             noise = ClassicFBM(float2(x, y), Octaves, Frequency, Lacunarity, Persistence);
             if (DomainWarp > 0){ noise = ClassicDomainWarping(float2(x, y),DomainWarp, Octaves, Frequency, Lacunarity, Persistence); }
             min = -0.36f;
             max = 0.375f;
         break;
-        case 4: //Simplex
+        case 2: //Simplex
             noise = snoiseFBM(float2(x,y), Octaves, Frequency, Lacunarity, Persistence);
             if (DomainWarp > 0){ noise = snoiseDomainWarping(float2(x, y),DomainWarp, Octaves, Frequency, Lacunarity, Persistence); }
             min = -0.625f;

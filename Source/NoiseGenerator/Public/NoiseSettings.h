@@ -3,13 +3,19 @@
 #include "NoiseSettings.generated.h"
 
 UENUM(BlueprintType)
+enum NoiseSource
+{
+	NoSource = 0 UMETA(Hidden),
+	CPU = 1,
+	GPU = 2
+};
+
+UENUM(BlueprintType)
 enum NoiseType
 {
-	None = 0 UMETA(Hidden),
+	NoType = 0 UMETA(Hidden),
 	Perlin = 1,
-	GPU_Perlin = 2,
-	Simplex = 3,
-	GPU_Simplex = 4
+	Simplex = 2
 };
 
 UENUM(BlueprintType)
@@ -34,6 +40,9 @@ struct FNoiseSettings
 {
 	GENERATED_BODY()
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	TEnumAsByte<NoiseSource> source;
+	
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	TEnumAsByte<NoiseType> type;
 
@@ -64,9 +73,6 @@ struct FNoiseSettings
 	UPROPERTY(EditAnywhere,BlueprintReadWrite)
 	float persistence;
 
-	// UPROPERTY(EditAnywhere,BlueprintReadWrite)
-	// bool normalize;
-
 	UPROPERTY(EditAnywhere,BlueprintReadWrite)
 	bool domainWarping;
 	
@@ -75,6 +81,7 @@ struct FNoiseSettings
 
 	FNoiseSettings() 
 	{
+		source = CPU;
 		type = Simplex;
 		filter = NoFilter;
 		normalizeMode = NoNormalization;
@@ -95,6 +102,7 @@ struct FNoiseSettings
 	bool operator==(const FNoiseSettings& other) const
 	{
 		if(
+			source == other.source &&
 			type == other.type &&
 			filter == other.filter &&
 			normalizeMode == other.normalizeMode &&

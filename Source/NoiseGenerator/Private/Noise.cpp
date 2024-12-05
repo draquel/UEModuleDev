@@ -122,14 +122,8 @@ FNoiseMap2d UNoise::Normalize(FNoiseMap2d NoiseMap, NoiseNormalizeMode normalize
 		case Perlin:
 			min = -0.45f; max = 0.45f;
 		break;
-		case GPU_Perlin:
-			min = -0.425f; max = 0.425f;
-		break;
 		case Simplex:
 			min = -0.8f; max = 0.8f;
-		break;
-		case GPU_Simplex:
-			min = -0.9f; max = 0.9f;
 		break;
 	}
 
@@ -159,44 +153,19 @@ FNoiseMap2d UNoise::Normalize(FNoiseMap2d NoiseMap, NoiseNormalizeMode normalize
 	return NoiseMap;
 }
 
-void UNoise::GenerateMap2D(FNoiseMap2d& NoiseMap, TArray<FNoiseLayerData>* layerData)
-{
-	float gain = 0.0f;
-	for (int i = 0; i < layerData->Num(); i++) {
-		gain += layerData->operator[](i).gain;
-	}
-	for(int x = NoiseMap.Position.X; x < NoiseMap.Position.X+NoiseMap.Size.X; x++) {
-		for(int y = NoiseMap.Position.Y; y < NoiseMap.Position.Y+NoiseMap.Size.Y; y++) {
-			FIntVector2 index = FIntVector2(x, y);
-			float sample = 0;
-			for (int i = 0; i < layerData->Num(); i++){
-				if (layerData->operator[](i).gain <= 0){ continue; }
-				if (layerData->operator[](i).curve == nullptr)	{
-					sample += layerData->operator[](i).noiseMap.Map[index] * layerData->operator[](i).gain;
-				}else{
-					sample += layerData->operator[](i).curve->GetFloatValue(layerData->operator[](i).noiseMap.Map[index]) * layerData->operator[](i).gain;
-				}	
-			}	
-			sample /= gain;
-			NoiseMap.Map.Add(index,sample);
-			NoiseMap.MinMax.Add(NoiseMap.Map[index]);
-		}
-	}	
-}
+
 
 //Maps
 FNoiseMap2d UNoise::GenerateMap2D(FIntVector pos, FIntVector2 mapSize, FNoiseSettings* NoiseSettings)
 {
 	FNoiseMap2d NoiseMap = FNoiseMap2d(pos,mapSize);
-	if (NoiseSettings->type != GPU_Perlin){
-		for(int x = 0; x < mapSize.X; x++) {
-			for(int y = 0; y < mapSize.Y; y++) {
-				FIntVector2 index = FIntVector2(FMath::Floor(pos.X) + x, FMath::Floor(pos.Y) + y);
-				NoiseMap.Map.Add(index,Evaluate2D(FVector(index.X,index.Y,0),NoiseSettings));
-				NoiseMap.MinMax.Add(NoiseMap.Map[index]);
-			}
-		}	
-	}
+	for(int x = 0; x < mapSize.X; x++) {
+		for(int y = 0; y < mapSize.Y; y++) {
+			FIntVector2 index = FIntVector2(FMath::Floor(pos.X) + x, FMath::Floor(pos.Y) + y);
+			NoiseMap.Map.Add(index,Evaluate2D(FVector(index.X,index.Y,0),NoiseSettings));
+			NoiseMap.MinMax.Add(NoiseMap.Map[index]);
+		}
+	}	
 
 	NoiseMap = Normalize(NoiseMap,NoiseSettings->normalizeMode,NoiseSettings->type);
 	
@@ -220,6 +189,30 @@ FNoiseMap2d UNoise::GenerateMap2D(FIntVector pos, FIntVector2 mapSize, TArray<FL
 	GenerateMap2D(NoiseMap,&layerData);
 	
 	return NoiseMap;
+}
+
+//Create FNoiseMap2D from a TArray of FNoiseLayerData to create Layered Noise
+void UNoise::GenerateMap2D(FNoiseMap2d& NoiseMap, TArray<FNoiseLayerData>* layerData)
+{
+	float gain = 0.0f;
+	for (int i = 0; i < layerData->Num(); i++) { gain += layerData->operator[](i).gain; }
+	for(int x = NoiseMap.Position.X; x < NoiseMap.Position.X+NoiseMap.Size.X; x++) {
+		for(int y = NoiseMap.Position.Y; y < NoiseMap.Position.Y+NoiseMap.Size.Y; y++) {
+			FIntVector2 index = FIntVector2(x, y);
+			float sample = 0;
+			for (int i = 0; i < layerData->Num(); i++){
+				if (layerData->operator[](i).gain <= 0){ continue; }
+				if (layerData->operator[](i).curve == nullptr)	{
+					sample += layerData->operator[](i).noiseMap.Map[index] * layerData->operator[](i).gain;
+				}else{
+					sample += layerData->operator[](i).curve->GetFloatValue(layerData->operator[](i).noiseMap.Map[index]) * layerData->operator[](i).gain;
+				}	
+			}	
+			sample /= gain;
+			NoiseMap.Map.Add(index,sample);
+			NoiseMap.MinMax.Add(NoiseMap.Map[index]);
+		}
+	}	
 }
 
 UTexture2D* UNoise::GenerateTexture(FIntVector pos, FIntVector2 mapSize, FNoiseSettings* NoiseSettings, UCurveLinearColor* ColorCurve)
