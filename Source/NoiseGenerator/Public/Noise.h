@@ -158,7 +158,7 @@ public:
 
 	static float EvaluateFilter(float noise, NoiseFilter filter);
 	static float Normalize(float noise, float min, float max);
-	static FNoiseMap2d Normalize(FNoiseMap2d NoiseMap, NoiseNormalizeMode normalizeMode, NoiseType noiseType);
+	static void Normalize(FNoiseMap2d& NoiseMap, NoiseNormalizeMode normalizeMode, NoiseType noiseType);
 
 	static FNoiseMap2d GenerateMap2D(FIntVector pos, FIntVector2 mapSize, FNoiseSettings* NoiseSettings);
 	static FNoiseMap2d GenerateMap2D(FIntVector pos, FIntVector2 mapSize, TArray<FLayeredNoiseSettings>* NoiseSettings);
@@ -166,7 +166,8 @@ public:
 	
 	static UTexture2D* GenerateTexture(FIntVector pos, FIntVector2 mapSize, FNoiseSettings* NoiseSettings, UCurveLinearColor* ColorCurve = nullptr);
 	static UTexture2D* GenerateTexture(FIntVector pos, FIntVector2 mapSize, TArray<FLayeredNoiseSettings>* NoiseSettings, UCurveLinearColor* ColorCurve = nullptr);
-	static UTexture2D* GenerateTexture(FNoiseMap2d NoiseMap, UCurveLinearColor* ColorCurve = nullptr);
+	static UTexture2D* GenerateTexture(FNoiseMap2d* NoiseMap, UCurveLinearColor* ColorCurve = nullptr);
+
 	static TMap<FIntVector,float> GenerateMap3D(FIntVector pos, FIntVector mapSize, FNoiseSettings* NoiseSettings);
 
 	static FVector2D PoissonSample(const FVector2D& center, float minRadius, float maxRadius);

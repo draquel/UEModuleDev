@@ -113,7 +113,7 @@ float UNoise::Normalize(float noise, float min = .0f, float max = 1.0f)
 	//return (noise - min) / (max - min);
 }
 
-FNoiseMap2d UNoise::Normalize(FNoiseMap2d NoiseMap, NoiseNormalizeMode normalizeMode, NoiseType noiseType)
+void UNoise::Normalize(FNoiseMap2d& NoiseMap, NoiseNormalizeMode normalizeMode, NoiseType noiseType)
 {
 	float min;
 	float max;
@@ -150,7 +150,7 @@ FNoiseMap2d UNoise::Normalize(FNoiseMap2d NoiseMap, NoiseNormalizeMode normalize
 			}
 		}
 	}
-	return NoiseMap;
+	// return NoiseMap;
 }
 
 
@@ -167,7 +167,7 @@ FNoiseMap2d UNoise::GenerateMap2D(FIntVector pos, FIntVector2 mapSize, FNoiseSet
 		}
 	}	
 
-	NoiseMap = Normalize(NoiseMap,NoiseSettings->normalizeMode,NoiseSettings->type);
+	Normalize(NoiseMap,NoiseSettings->normalizeMode,NoiseSettings->type);
 	
 	return NoiseMap;
 }
@@ -217,32 +217,33 @@ void UNoise::GenerateMap2D(FNoiseMap2d& NoiseMap, TArray<FNoiseLayerData>* layer
 
 UTexture2D* UNoise::GenerateTexture(FIntVector pos, FIntVector2 mapSize, FNoiseSettings* NoiseSettings, UCurveLinearColor* ColorCurve)
 {
-	return GenerateTexture(GenerateMap2D(pos,mapSize,NoiseSettings),ColorCurve);
+	FNoiseMap2d NoiseMap = GenerateMap2D(pos,mapSize,NoiseSettings);
+	return GenerateTexture(&NoiseMap,ColorCurve);
 }
 
 UTexture2D* UNoise::GenerateTexture(FIntVector pos, FIntVector2 mapSize,TArray<FLayeredNoiseSettings>* NoiseSettings, UCurveLinearColor* ColorCurve)
 {
-	return GenerateTexture(GenerateMap2D(pos,mapSize,NoiseSettings),ColorCurve);
+	FNoiseMap2d NoiseMap = GenerateMap2D(pos,mapSize,NoiseSettings);
+	return GenerateTexture(&NoiseMap,ColorCurve);
 }
 
-UTexture2D* UNoise::GenerateTexture(FNoiseMap2d NoiseMap, UCurveLinearColor* ColorCurve)
+UTexture2D* UNoise::GenerateTexture(FNoiseMap2d* NoiseMap, UCurveLinearColor* ColorCurve)
 {
-	UTexture2D* texture = UTexture2D::CreateTransient(NoiseMap.Size.X,NoiseMap.Size.Y);
+	UTexture2D* texture = UTexture2D::CreateTransient(NoiseMap->Size.X,NoiseMap->Size.Y);
 	TArray<FColor> colors;
 
-	UE_LOG(LogTemp,Log,TEXT("UNoise::GenerateTexture() ==> Min:%f Max:%f "),NoiseMap.MinMax.min,NoiseMap.MinMax.max);
-	for(int x = 0; x < NoiseMap.Size.X; x++) {
-		for(int y = 0; y < NoiseMap.Size.Y; y++) {
-			FIntVector2 index = FIntVector2(NoiseMap.Position.X + x, NoiseMap.Position.Y + y);
-			if (!NoiseMap.Map.Contains(index)){
+	for(int x = 0; x < NoiseMap->Size.X; x++) {
+		for(int y = 0; y < NoiseMap->Size.Y; y++) {
+			FIntVector2 index = FIntVector2(NoiseMap->Position.X + x, NoiseMap->Position.Y + y);
+			if (!NoiseMap->Map.Contains(index)){
 				UE_LOG(LogTemp, Error, TEXT("Noise map does not contain this element %s"),*index.ToString());
 				continue;
 			}
 			if (ColorCurve == nullptr) {
-				uint8 color = static_cast<uint8>(NoiseMap.Map[index] * 255);
+				uint8 color = static_cast<uint8>(NoiseMap->Map[index] * 255);
 				colors.Add(FColor(color,color,color,255));	
 			} else {
-				FLinearColor color = ColorCurve->GetLinearColorValue(NoiseMap.Map[index]);
+				FLinearColor color = ColorCurve->GetLinearColorValue(NoiseMap->Map[index]);
 				colors.Add(color.ToFColor(true));
 			}
 		}
