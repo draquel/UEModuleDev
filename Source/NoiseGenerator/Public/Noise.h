@@ -53,10 +53,10 @@ struct FNoiseMap2d
 	FIntVector Position;
 
 	UPROPERTY()
-	FMinMax MinMax;
-
-    UPROPERTY()
 	FIntVector2 Size;
+
+	UPROPERTY()
+	FMinMax MinMax;
 	
 	// Default constructor
 	FNoiseMap2d()
@@ -150,8 +150,8 @@ public:
 	
 	static float Evaluate2D(FVector pos, FNoiseSettings* NoiseSettings);
 	static float EvaluateHeight(FVector pos, FNoiseSettings* NoiseSettings, int heightMultiplier);
-	static float EvaluateHeightFalloff(FVector pos, FNoiseSettings* NoiseSettings, int heightMultiplier, int worldSize);
 	static float EvaluateSlope(FVector pos, FNoiseSettings* NoiseSettings, int heightMultiplier);
+	static float EvaluateHeightFalloff(FVector pos, FNoiseSettings* NoiseSettings, int heightMultiplier, int worldSize);
 
 	static float Evaluate3D(FVector pos, FNoiseSettings* NoiseSettings);
 	static float EvaluateDensity(FVector pos, FNoiseSettings* NoiseSettings, float densityMultiplier);
@@ -160,9 +160,10 @@ public:
 	static float Normalize(float noise, float min, float max);
 	static FNoiseMap2d Normalize(FNoiseMap2d NoiseMap, NoiseNormalizeMode normalizeMode, NoiseType noiseType);
 
-	static void GenerateMap2D(FNoiseMap2d& NoiseMap,TArray<FNoiseLayerData>* layerData);
 	static FNoiseMap2d GenerateMap2D(FIntVector pos, FIntVector2 mapSize, FNoiseSettings* NoiseSettings);
 	static FNoiseMap2d GenerateMap2D(FIntVector pos, FIntVector2 mapSize, TArray<FLayeredNoiseSettings>* NoiseSettings);
+	static void GenerateMap2D(FNoiseMap2d& NoiseMap,TArray<FNoiseLayerData>* layerData);
+	
 	static UTexture2D* GenerateTexture(FIntVector pos, FIntVector2 mapSize, FNoiseSettings* NoiseSettings, UCurveLinearColor* ColorCurve = nullptr);
 	static UTexture2D* GenerateTexture(FIntVector pos, FIntVector2 mapSize, TArray<FLayeredNoiseSettings>* NoiseSettings, UCurveLinearColor* ColorCurve = nullptr);
 	static UTexture2D* GenerateTexture(FNoiseMap2d NoiseMap, UCurveLinearColor* ColorCurve = nullptr);

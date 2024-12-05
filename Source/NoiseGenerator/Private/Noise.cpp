@@ -9,8 +9,15 @@ FastNoiseLite UNoise::SetupFastNoise(FNoiseSettings* settings)
 	FastNoiseLite noise;
 
 	FastNoiseLite::NoiseType NoiseType;
-	if(settings->type == Perlin) { NoiseType = FastNoiseLite::NoiseType_Perlin;	}
-	else { NoiseType = FastNoiseLite::NoiseType_OpenSimplex2; }
+	switch (settings->type)	{
+		default:
+		case Perlin:
+			NoiseType = FastNoiseLite::NoiseType_Perlin;
+			break;
+		case Simplex:
+			NoiseType = FastNoiseLite::NoiseType_OpenSimplex2;
+			break;
+	}
 
 	noise.SetNoiseType(NoiseType);
 	noise.SetFractalType(FastNoiseLite::FractalType_FBm);
@@ -50,15 +57,6 @@ float UNoise::EvaluateHeight(FVector pos, FNoiseSettings* NoiseSettings, int hei
 	return Evaluate2D(pos,NoiseSettings) * heightMultiplier;
 }
 
-//does this work?
-float UNoise::EvaluateHeightFalloff(FVector pos, FNoiseSettings* NoiseSettings, int heightMultiplier,int worldSize)
-{
-	float falloff = FMath::Max(FMath::Abs(pos.X/worldSize*2-1),FMath::Abs(pos.Y/worldSize*2-1));
-	float smoothFalloff = FMath::Pow(falloff,3) / (FMath::Pow(falloff,3) + FMath::Pow(2.2f - 2.2f*falloff,3));
-	
-	return FMath::Clamp(Evaluate2D(pos,NoiseSettings) - smoothFalloff,-1,1) * heightMultiplier;
-}
-
 float UNoise::EvaluateSlope(FVector pos,FNoiseSettings* NoiseSettings, int heightMultiplier)
 {
 	float height = pos.Z; 
@@ -69,6 +67,15 @@ float UNoise::EvaluateSlope(FVector pos,FNoiseSettings* NoiseSettings, int heigh
 	float slopeY = FMath::Abs(heightY - height) / 100;
 
 	return slopeX > slopeY ? slopeX : slopeY;
+}
+
+//does this work?
+float UNoise::EvaluateHeightFalloff(FVector pos, FNoiseSettings* NoiseSettings, int heightMultiplier,int worldSize)
+{
+	float falloff = FMath::Max(FMath::Abs(pos.X/worldSize*2-1),FMath::Abs(pos.Y/worldSize*2-1));
+	float smoothFalloff = FMath::Pow(falloff,3) / (FMath::Pow(falloff,3) + FMath::Pow(2.2f - 2.2f*falloff,3));
+	
+	return FMath::Clamp(Evaluate2D(pos,NoiseSettings) - smoothFalloff,-1,1) * heightMultiplier;
 }
 
 //3D Noise
@@ -201,7 +208,6 @@ FNoiseMap2d UNoise::GenerateMap2D(FIntVector pos, FIntVector2 mapSize, TArray<FL
 	FNoiseMap2d NoiseMap = FNoiseMap2d(pos,mapSize);
 	TArray<FNoiseLayerData> layerData = TArray<FNoiseLayerData>();
 
-	float gain = 0;
 	for (int i = 0; i < NoiseSettings->Num(); i++){
 		if (NoiseSettings->operator[](i).Gain <= 0){ continue; }
 		FNoiseLayerData data = FNoiseLayerData();
@@ -209,7 +215,6 @@ FNoiseMap2d UNoise::GenerateMap2D(FIntVector pos, FIntVector2 mapSize, TArray<FL
 		data.gain = NoiseSettings->operator[](i).Gain;
 		data.curve = NoiseSettings->operator[](i).LayerCurve;
 		layerData.Add(data);
-		gain += data.gain;
 	}
 
 	GenerateMap2D(NoiseMap,&layerData);
@@ -249,10 +254,10 @@ UTexture2D* UNoise::GenerateTexture(FNoiseMap2d NoiseMap, UCurveLinearColor* Col
 			}
 		}
 	}
+	
 	void* TextureData = texture->GetPlatformData()->Mips[0].BulkData.Lock(LOCK_READ_WRITE);
 	FMemory::Memcpy(TextureData, colors.GetData(), colors.Num() * sizeof(FColor));
 	texture->GetPlatformData()->Mips[0].BulkData.Unlock();
-
 	texture->UpdateResource();
 	
 	return texture;	

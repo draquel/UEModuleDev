@@ -78,6 +78,7 @@ struct FNoiseSettings
 		type = Simplex;
 		filter = NoFilter;
 		normalizeMode = NoNormalization;
+		
 		scale = 5000.0f;
 		seed = 12345;
 		offset = FVector(1230, 3210, 3201);
@@ -86,7 +87,6 @@ struct FNoiseSettings
 		lacunarity = 1.8f;
 		persistence = 1;
 		frequency = 1;
-		// normalize = false;
 
 		domainWarping = false;
 		domainWarpingScale = 1.0f;
