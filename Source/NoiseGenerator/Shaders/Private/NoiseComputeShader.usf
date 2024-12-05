@@ -1,0 +1,81 @@
+#include "/Engine/Public/Platform.ush"
+#include "Simplex2D.usf"
+#include "Perlin2D.usf"
+
+RWBuffer<float> Output;
+
+float3 Position;
+float3 Size;
+
+float3 Offset;
+int Octaves;
+float Frequency;
+float Lacunarity;
+float Persistence;
+float Scale;
+int Filter;
+int Type;
+int NormalizeMode;
+float DomainWarp;
+
+float FilterRigid(float noise)
+{
+    float v = 1 - abs(noise);
+    return v * v * 2 - 1; 
+}
+
+// Main 2D compute shader function
+[numthreads(THREADS_X, THREADS_Y, THREADS_Z)]
+void NoiseComputeShader(uint3 DispatchThreadId : SV_DispatchThreadID, uint GroupIndex : SV_GroupIndex )
+{
+    if (DispatchThreadId.x >= Size.x || DispatchThreadId.y >= Size.y || DispatchThreadId.z >= 1) return;
+
+    //2DSample point
+    float3 mapPos = float3(DispatchThreadId.x,DispatchThreadId.y,DispatchThreadId.z) ;
+    float x = (Position.x + mapPos.x + Offset.x) * (1.0f/Scale);
+    float y = (Position.y + mapPos.y + Offset.y) * (1.0f/Scale);
+    float noise = 0.0f;
+
+    //Generate Noise - Warp
+    float min = -1.0f;
+    float max = 1.0f;
+    switch (Type){
+        case 2: //Perlin
+            noise = ClassicFBM(float2(x, y), Octaves, Frequency, Lacunarity, Persistence);
+            if (DomainWarp > 0){ noise = ClassicDomainWarping(float2(x, y),DomainWarp, Octaves, Frequency, Lacunarity, Persistence); }
+            min = -0.36f;
+            max = 0.375f;
+        break;
+        case 4: //Simplex
+            noise = snoiseFBM(float2(x,y), Octaves, Frequency, Lacunarity, Persistence);
+            if (DomainWarp > 0){ noise = snoiseDomainWarping(float2(x, y),DomainWarp, Octaves, Frequency, Lacunarity, Persistence); }
+            min = -0.625f;
+            max = 0.525f; 
+        break;
+        default: //None? shouldnt be allowed to happen
+            break;
+    }
+
+    //Mutations - Filters / Normalization
+    switch (Filter){
+        case 1: // Rigid 
+            noise = FilterRigid(noise);
+            break;
+        default: //None
+        break;
+    }
+    
+    switch (NormalizeMode) {
+        case 3://Global
+            noise = (1-(-1))/(max-min)*(noise-min)+(-1);
+            break;
+        case 4: //GlobalPositive
+            noise = (noise - (min)) / (max - (min));
+            break;
+        default:
+            break;
+    }
+
+    //Set Output Buffer
+    Output[mapPos.y * Size.x + mapPos.x] = noise;
+}

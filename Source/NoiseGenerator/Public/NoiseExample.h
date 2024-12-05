@@ -16,9 +16,6 @@ public:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "NoiseExample")
 	UStaticMeshComponent* TMesh;
 
-	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "NoiseExample")
-	UStaticMeshComponent* RTMesh;
-
 	UPROPERTY()
 	UMaterialInstanceDynamic* DynamicMaterial;
 
@@ -26,13 +23,7 @@ public:
 	UMaterial* DefaultMaterial;
 
 	UPROPERTY(EditAnywhere)
-	UTextureRenderTarget2D* RenderTarget;	
-
-	// UPROPERTY(EditAnywhere)
-	// bool AutoUpdate;
-
-	UPROPERTY(EditAnywhere)
-	FVector Center;
+	FIntVector Center;
 
 	UPROPERTY(EditAnywhere)
 	bool UseLayeredNoise = false;
@@ -47,7 +38,7 @@ public:
 	UCurveLinearColor* ColorCurve;
 	
 	UPROPERTY(EditAnywhere)
-	FVector2D TextureSize = FVector2D(256,256);
+	FIntVector2 TextureSize = FIntVector2(256,256);
 
 	UFUNCTION(CallInEditor, meta=(Category="NoiseExample"))
 	void Regenerate();
@@ -55,13 +46,11 @@ public:
 	UFUNCTION(CallInEditor, meta=(Category="NoiseExample"))
 	void RandomSeed();
 	
+	
 protected:
 	virtual void BeginPlay() override;
 
-private:
-	// FNoiseSettings LastNoiseSettings;
-
-	void Generate();
+	void SetTexture(UTexture2D* Texture);
 
 public:
 	virtual void Tick(float DeltaTime) override;

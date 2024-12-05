@@ -103,73 +103,148 @@ float UNoise::FilterRigid(float noise)
 float UNoise::Normalize(float noise, float min = .0f, float max = 1.0f)
 {
 	return (max - min) * ((noise + 1.0f) / 2.0f) + min;
+	//return (noise - min) / (max - min);
+}
+
+FNoiseMap2d UNoise::Normalize(FNoiseMap2d NoiseMap, NoiseNormalizeMode normalizeMode, NoiseType noiseType)
+{
+	float min;
+	float max;
+	switch(noiseType){
+		default:
+		case Perlin:
+			min = -0.45f; max = 0.45f;
+		break;
+		case GPU_Perlin:
+			min = -0.425f; max = 0.425f;
+		break;
+		case Simplex:
+			min = -0.8f; max = 0.8f;
+		break;
+		case GPU_Simplex:
+			min = -0.9f; max = 0.9f;
+		break;
+	}
+
+	if (normalizeMode != NoNormalization){
+		for(int x = 0; x < NoiseMap.Size.X; x++) {
+			for(int y = 0; y < NoiseMap.Size.Y; y++) {
+				FIntVector2 index = FIntVector2(FMath::Floor(NoiseMap.Position.X) + x, FMath::Floor(NoiseMap.Position.Y) + y);
+				switch (normalizeMode){
+				case Local:
+					NoiseMap.Map[index] = (1-(-1))/(NoiseMap.MinMax.max-NoiseMap.MinMax.min)*(NoiseMap.Map[index]-NoiseMap.MinMax.min)+(-1);
+					break;
+				case LocalPositive:
+					NoiseMap.Map[index] = (NoiseMap.Map[index]-NoiseMap.MinMax.min)/(NoiseMap.MinMax.max-NoiseMap.MinMax.min);
+					break;
+				case Global:
+					NoiseMap.Map[index] = (1-(-1))/(max-min)*(NoiseMap.Map[index]-min)+(-1);
+					break;
+				case GlobalPositive:
+					NoiseMap.Map[index] = (NoiseMap.Map[index] - (min)) / (max - (min));
+					break;
+				default:
+					break;
+				}
+			}
+		}
+	}
+	return NoiseMap;
+}
+
+void UNoise::GenerateMap2D(FNoiseMap2d& NoiseMap, TArray<FNoiseLayerData>* layerData)
+{
+	float gain = 0.0f;
+	for (int i = 0; i < layerData->Num(); i++) {
+		gain += layerData->operator[](i).gain;
+	}
+	for(int x = NoiseMap.Position.X; x < NoiseMap.Position.X+NoiseMap.Size.X; x++) {
+		for(int y = NoiseMap.Position.Y; y < NoiseMap.Position.Y+NoiseMap.Size.Y; y++) {
+			FIntVector2 index = FIntVector2(x, y);
+			float sample = 0;
+			for (int i = 0; i < layerData->Num(); i++){
+				if (layerData->operator[](i).gain <= 0){ continue; }
+				if (layerData->operator[](i).curve == nullptr)	{
+					sample += layerData->operator[](i).noiseMap.Map[index] * layerData->operator[](i).gain;
+				}else{
+					sample += layerData->operator[](i).curve->GetFloatValue(layerData->operator[](i).noiseMap.Map[index]) * layerData->operator[](i).gain;
+				}	
+			}	
+			sample /= gain;
+			NoiseMap.Map.Add(index,sample);
+			NoiseMap.MinMax.Add(NoiseMap.Map[index]);
+		}
+	}	
 }
 
 //Maps
-
-TMap<FVector2d, float> UNoise::GenerateMap2D(FVector pos, FVector2d mapSize, FNoiseSettings* NoiseSettings)
+FNoiseMap2d UNoise::GenerateMap2D(FIntVector pos, FIntVector2 mapSize, FNoiseSettings* NoiseSettings)
 {
-	TMap<FVector2d, float> map;
-	for(int x = pos.X; x < pos.X+mapSize.X; x++) {
-		for(int y = pos.Y; y < pos.Y+mapSize.Y; y++) {
-			FVector2d index = FVector2d(x, y);
-			map.Add(index,Evaluate2D(FVector(x,y,0),NoiseSettings));
-		}
+	FNoiseMap2d NoiseMap = FNoiseMap2d(pos,mapSize);
+	if (NoiseSettings->type != GPU_Perlin){
+		for(int x = 0; x < mapSize.X; x++) {
+			for(int y = 0; y < mapSize.Y; y++) {
+				FIntVector2 index = FIntVector2(FMath::Floor(pos.X) + x, FMath::Floor(pos.Y) + y);
+				NoiseMap.Map.Add(index,Evaluate2D(FVector(index.X,index.Y,0),NoiseSettings));
+				NoiseMap.MinMax.Add(NoiseMap.Map[index]);
+			}
+		}	
 	}
-	return map;
+
+	NoiseMap = Normalize(NoiseMap,NoiseSettings->normalizeMode,NoiseSettings->type);
+	
+	return NoiseMap;
 }
 
-TMap<FVector2d, float> UNoise::GenerateMap2D(FVector pos, FVector2d mapSize, TArray<FLayeredNoiseSettings>* NoiseSettings)
+FNoiseMap2d UNoise::GenerateMap2D(FIntVector pos, FIntVector2 mapSize, TArray<FLayeredNoiseSettings>* NoiseSettings)
 {
-	TMap<FVector2d, float> map = TMap<FVector2d, float>();
+	FNoiseMap2d NoiseMap = FNoiseMap2d(pos,mapSize);
 	TArray<FNoiseLayerData> layerData = TArray<FNoiseLayerData>();
 
 	float gain = 0;
 	for (int i = 0; i < NoiseSettings->Num(); i++){
 		if (NoiseSettings->operator[](i).Gain <= 0){ continue; }
 		FNoiseLayerData data = FNoiseLayerData();
-		data.map = GenerateMap2D(pos,mapSize,&NoiseSettings->operator[](i).LayerSettings);
+		data.noiseMap = GenerateMap2D(pos,mapSize,&NoiseSettings->operator[](i).LayerSettings);
 		data.gain = NoiseSettings->operator[](i).Gain;
 		data.curve = NoiseSettings->operator[](i).LayerCurve;
 		layerData.Add(data);
 		gain += data.gain;
-	}	
-	for(int x = pos.X; x < pos.X+mapSize.X; x++) {
-		for(int y = pos.Y; y < pos.Y+mapSize.Y; y++) {
-			FVector2d index = FVector2d(x, y);
-			float sample = 0;
-			for (int i = 0; i < layerData.Num(); i++){
-				if (layerData[i].gain <= 0){ continue; }
-				if (layerData[i].curve == nullptr)	{
-					sample += layerData[i].map[index] * layerData[i].gain;
-				}else{
-					sample += layerData[i].curve->GetFloatValue(layerData[i].map[index]) * layerData[i].gain;
-				}	
-			}	
-			sample /= gain;
-			map.Add(index,sample);
-		}
 	}
 
-	return map;
+	GenerateMap2D(NoiseMap,&layerData);
+	
+	return NoiseMap;
 }
 
-UTexture2D* UNoise::GenerateTexture(FVector pos, FVector2d mapSize, FNoiseSettings* NoiseSettings, UCurveLinearColor* ColorCurve)
+UTexture2D* UNoise::GenerateTexture(FIntVector pos, FIntVector2 mapSize, FNoiseSettings* NoiseSettings, UCurveLinearColor* ColorCurve)
 {
-	TMap<FVector2d, float> map = GenerateMap2D(pos,mapSize,NoiseSettings);
-	UTexture2D* texture = UTexture2D::CreateTransient(mapSize.X,mapSize.Y);
+	return GenerateTexture(GenerateMap2D(pos,mapSize,NoiseSettings),ColorCurve);
+}
 
+UTexture2D* UNoise::GenerateTexture(FIntVector pos, FIntVector2 mapSize,TArray<FLayeredNoiseSettings>* NoiseSettings, UCurveLinearColor* ColorCurve)
+{
+	return GenerateTexture(GenerateMap2D(pos,mapSize,NoiseSettings),ColorCurve);
+}
+
+UTexture2D* UNoise::GenerateTexture(FNoiseMap2d NoiseMap, UCurveLinearColor* ColorCurve)
+{
+	UTexture2D* texture = UTexture2D::CreateTransient(NoiseMap.Size.X,NoiseMap.Size.Y);
 	TArray<FColor> colors;
 
-	for(int x = pos.X; x < pos.X+mapSize.X; x++) {
-		for(int y = pos.Y; y < pos.Y+mapSize.Y; y++) {
-			FVector2d index = FVector2d(x, y);
-			float normalized = Normalize(map[index],0,1);
+	UE_LOG(LogTemp,Log,TEXT("UNoise::GenerateTexture() ==> Min:%f Max:%f "),NoiseMap.MinMax.min,NoiseMap.MinMax.max);
+	for(int x = 0; x < NoiseMap.Size.X; x++) {
+		for(int y = 0; y < NoiseMap.Size.Y; y++) {
+			FIntVector2 index = FIntVector2(NoiseMap.Position.X + x, NoiseMap.Position.Y + y);
+			if (!NoiseMap.Map.Contains(index)){
+				UE_LOG(LogTemp, Error, TEXT("Noise map does not contain this element %s"),*index.ToString());
+				continue;
+			}
 			if (ColorCurve == nullptr) {
-				uint8 color = static_cast<uint8>(normalized * 255);
+				uint8 color = static_cast<uint8>(NoiseMap.Map[index] * 255);
 				colors.Add(FColor(color,color,color,255));	
 			} else {
-				FLinearColor color = ColorCurve->GetLinearColorValue(normalized);
+				FLinearColor color = ColorCurve->GetLinearColorValue(NoiseMap.Map[index]);
 				colors.Add(color.ToFColor(true));
 			}
 		}
@@ -180,64 +255,29 @@ UTexture2D* UNoise::GenerateTexture(FVector pos, FVector2d mapSize, FNoiseSettin
 
 	texture->UpdateResource();
 	
-	return texture;
+	return texture;	
 }
 
-UTexture2D* UNoise::GenerateTexture(FVector pos, FVector2d mapSize,TArray<FLayeredNoiseSettings>* NoiseSettings, UCurveLinearColor* ColorCurve)
+TMap<FIntVector, float> UNoise::GenerateMap3D(FIntVector pos, FIntVector mapSize, FNoiseSettings* NoiseSettings)
 {
-	UTexture2D* texture = UTexture2D::CreateTransient(mapSize.X,mapSize.Y);
-	TArray<FColor> colors;
-	TArray<FNoiseLayerData> layerData = TArray<FNoiseLayerData>();
-
-	float gain = 0;
-	for (int i = 0; i < NoiseSettings->Num(); i++){
-		if (NoiseSettings->operator[](i).Gain <= 0){ continue; }
-		FNoiseLayerData data = FNoiseLayerData();
-		data.map = GenerateMap2D(pos,mapSize,&NoiseSettings->operator[](i).LayerSettings);
-		data.gain = NoiseSettings->operator[](i).Gain;
-		data.curve = NoiseSettings->operator[](i).LayerCurve;
-		layerData.Add(data);
-		gain += data.gain;
-	}	
-	for(int x = pos.X; x < pos.X+mapSize.X; x++) {
-		for(int y = pos.Y; y < pos.Y+mapSize.Y; y++) {
-			FVector2d index = FVector2d(x, y);
-			float sample = 0;
-			for (int i = 0; i < layerData.Num(); i++){
-				if (layerData[i].curve == nullptr)	{
-					sample += layerData[i].map[index] * layerData[i].gain;
-				}else{
-					sample += layerData[i].curve->GetFloatValue(layerData[i].map[index]) * layerData[i].gain;
-				}	
-			}	
-			sample /= gain;
-			float normalized = Normalize(sample,0,1);
-			if (ColorCurve == nullptr) {
-				uint8 color = static_cast<uint8>(normalized * 255);
-				colors.Add(FColor(color,color,color,255));	
-			} else {
-				FLinearColor color = ColorCurve->GetLinearColorValue(normalized);
-				colors.Add(color.ToFColor(true));
-			}
-		}
-	}
-	void* TextureData = texture->GetPlatformData()->Mips[0].BulkData.Lock(LOCK_READ_WRITE);
-	FMemory::Memcpy(TextureData, colors.GetData(), colors.Num() * sizeof(FColor));
-	texture->GetPlatformData()->Mips[0].BulkData.Unlock();
-
-	texture->UpdateResource();
-	
-	return texture;
-}
-
-TMap<FVector, float> UNoise::GenerateMap3D(FVector pos, FVector mapSize, FNoiseSettings* NoiseSettings)
-{
-	TMap<FVector, float> map;
+	TMap<FIntVector, float> map;
+	FMinMax MinMax;
 	for(int x = pos.X; x < pos.X+mapSize.X; x++) {
 		for(int y = pos.Y; y < pos.Y+mapSize.Y; y++) {
 			for(int z = pos.Z; z < pos.Z+mapSize.Z; z++) {
-				FVector index = FVector(x, y, z);
+				FIntVector index = FIntVector(x, y, z);
 				map.Add(index,Evaluate3D(FVector(x,y,z),NoiseSettings));
+				MinMax.Add(map[index]);
+			}
+		}
+	}
+	if (NoiseSettings->normalizeMode == NoiseNormalizeMode::Local){
+		for(int x = pos.X; x < pos.X+mapSize.X; x++) {
+			for(int y = pos.Y; y < pos.Y+mapSize.Y; y++) {
+				for(int z = pos.Z; z < pos.Z+mapSize.Z; z++) {
+					FIntVector index = FIntVector(x, y, z);
+					map[index] = Normalize(map[index],MinMax.min,MinMax.max);
+				}
 			}
 		}
 	}
