@@ -271,7 +271,7 @@ void FNoiseComputeShaderInterface::ExecuteMultipleDispatchesAndNotify(FRHIComman
 
                 OutputData[i] = OutputVals;
             } else {
-                UE_LOG(LogTemp, Warning, TEXT("GPU Buffer Readback is not ready for index %d."), i);
+                UE_LOG(NoiseGenerator, Warning, TEXT("GPU Buffer Readback is not ready for index %d."), i);
             }
 
             delete GPUBufferReadback;
