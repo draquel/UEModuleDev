@@ -220,6 +220,7 @@ protected:
 	static FMinMax GetTypeMinMax(NoiseType type);
 
 public:
+	//CPU NOISE
 	static float Evaluate1D(float x, FNoiseSettings* NoiseSettings);
 	
 	static float Evaluate2D(FVector pos, FNoiseSettings* NoiseSettings);
@@ -233,13 +234,19 @@ public:
 	static float EvaluateFilter(float noise, NoiseFilter filter);
 	static float Normalize(float noise, float min, float max);
 	static float Normalize(NoiseNormalizeMode normalizeMode, float noise, FMinMax localMinMax, FMinMax typeMinMax);
-	static void Normalize(FNoiseMap2d& NoiseMap, NoiseNormalizeMode normalizeMode, NoiseType noiseType);
-	static void Normalize(FNoiseMap3d& NoiseMap, NoiseNormalizeMode normalizeMode, NoiseType noiseType);
+	static void Normalize(FNoiseMap2d* NoiseMap, NoiseNormalizeMode normalizeMode, NoiseType noiseType);
+	static void Normalize(FNoiseMap3d* NoiseMap, NoiseNormalizeMode normalizeMode, NoiseType noiseType);
 
+	//CPU 2D Maps
 	static FNoiseMap2d GenerateMap2D(FIntVector pos, FIntVector2 mapSize, FNoiseSettings* NoiseSettings);
 	static FNoiseMap2d GenerateMap2D(FIntVector pos, FIntVector2 mapSize, TArray<FLayeredNoiseSettings>* NoiseSettings);
 	static void GenerateMap2D(FNoiseMap2d& NoiseMap,TArray<FNoiseLayerData>* layerData);
+
+	//Needs unique Name -- Accessors for CPU & GPU Generation, with callback to handle Async uniformily.
+	static void GenerateMap2D(FIntVector pos, FIntVector2 mapSize, FNoiseSettings NoiseSettings, TFunction<void(FNoiseMap2d NoiseMap)> Callback);
+	static void GenerateMap2D(FIntVector pos, FIntVector2 mapSize,  TArray<FLayeredNoiseSettings> NoiseSettings, TFunction<void(FNoiseMap2d NoiseMap)> Callback);
 	
+	//2D TEXTURE Generators
 	static UTexture2D* GenerateTexture(FIntVector pos, FIntVector2 mapSize, FNoiseSettings* NoiseSettings, UCurveLinearColor* ColorCurve = nullptr);
 	static UTexture2D* GenerateTexture(FIntVector pos, FIntVector2 mapSize, TArray<FLayeredNoiseSettings>* NoiseSettings, UCurveLinearColor* ColorCurve = nullptr);
 	static UTexture2D* GenerateTexture(FNoiseMap2d* NoiseMap, UCurveLinearColor* ColorCurve = nullptr);
