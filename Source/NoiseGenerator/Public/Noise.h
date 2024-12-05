@@ -217,7 +217,7 @@ protected:
 	
 	static float FilterRigid(float noise);
 
-	static void GetTypeMinMax(NoiseType type, float& min, float& max);
+	static FMinMax GetTypeMinMax(NoiseType type);
 
 public:
 	static float Evaluate1D(float x, FNoiseSettings* NoiseSettings);
@@ -232,6 +232,7 @@ public:
 
 	static float EvaluateFilter(float noise, NoiseFilter filter);
 	static float Normalize(float noise, float min, float max);
+	static float Normalize(NoiseNormalizeMode normalizeMode, float noise, FMinMax localMinMax, FMinMax typeMinMax);
 	static void Normalize(FNoiseMap2d& NoiseMap, NoiseNormalizeMode normalizeMode, NoiseType noiseType);
 	static void Normalize(FNoiseMap3d& NoiseMap, NoiseNormalizeMode normalizeMode, NoiseType noiseType);
 

@@ -107,89 +107,76 @@ float UNoise::FilterRigid(float noise)
 	return v * v * 2 - 1;
 }
 
-void UNoise::GetTypeMinMax(NoiseType type, float& min, float& max)
+FMinMax UNoise::GetTypeMinMax(NoiseType type)
 {
+	FMinMax minmax = FMinMax();
 	switch(type){
 		default:
 		case Perlin:
-			min = -0.45f; max = 0.45f;
+			minmax.min = -0.45f; minmax.max = 0.45f;
 			break;
 		case Simplex:
-			min = -0.8f; max = 0.8f;
+			minmax.min = -0.8f; minmax.max = 0.8f;
 			break;
-	}	
+	}
+	return minmax;
 }
 
 float UNoise::Normalize(float noise, float min = .0f, float max = 1.0f)
 {
 	return (max - min) * ((noise + 1.0f) / 2.0f) + min;
-	//return (noise - min) / (max - min);
+}
+
+float UNoise::Normalize(NoiseNormalizeMode normalizeMode, float noise, FMinMax localMinMax, FMinMax typeMinMax)
+{
+	switch (normalizeMode){
+		case Local:
+			noise = (1-(-1))/(localMinMax.max-localMinMax.min)*(noise-localMinMax.min)+(-1);
+			break;
+		case LocalPositive:
+			noise = (noise-localMinMax.min)/(localMinMax.max-localMinMax.min);
+			break;
+		case Global:
+			noise = (1-(-1))/(typeMinMax.max-typeMinMax.min)*(noise-typeMinMax.min)+(-1);
+			break;
+		case GlobalPositive:
+			noise = (noise - (typeMinMax.min)) / (typeMinMax.max - (typeMinMax.min));
+			break;
+		default:
+			break;
+	}
+	
+	return noise;
 }
 
 void UNoise::Normalize(FNoiseMap2d& NoiseMap, NoiseNormalizeMode normalizeMode, NoiseType noiseType)
 {
-	float min;
-	float max;
-	GetTypeMinMax(noiseType,min,max);	
+	FMinMax typeMinMax = GetTypeMinMax(noiseType);	
 
 	if (normalizeMode != NoNormalization){
 		for(int x = 0; x < NoiseMap.Size.X; x++) {
 			for(int y = 0; y < NoiseMap.Size.Y; y++) {
 				FIntVector2 index = FIntVector2(FMath::Floor(NoiseMap.Position.X) + x, FMath::Floor(NoiseMap.Position.Y) + y);
-				switch (normalizeMode){
-				case Local:
-					NoiseMap.Map[index] = (1-(-1))/(NoiseMap.MinMax.max-NoiseMap.MinMax.min)*(NoiseMap.Map[index]-NoiseMap.MinMax.min)+(-1);
-					break;
-				case LocalPositive:
-					NoiseMap.Map[index] = (NoiseMap.Map[index]-NoiseMap.MinMax.min)/(NoiseMap.MinMax.max-NoiseMap.MinMax.min);
-					break;
-				case Global:
-					NoiseMap.Map[index] = (1-(-1))/(max-min)*(NoiseMap.Map[index]-min)+(-1);
-					break;
-				case GlobalPositive:
-					NoiseMap.Map[index] = (NoiseMap.Map[index] - (min)) / (max - (min));
-					break;
-				default:
-					break;
-				}
+				NoiseMap.Map[index] = Normalize(normalizeMode,NoiseMap.Map[index],NoiseMap.MinMax,typeMinMax);
 			}
 		}
 	}
-	// return NoiseMap;
 }
 
 void UNoise::Normalize(FNoiseMap3d& NoiseMap, NoiseNormalizeMode normalizeMode, NoiseType noiseType)
 {
-	float min;
-	float max;
-	GetTypeMinMax(noiseType,min,max);	
-
+	FMinMax typeMinMax = GetTypeMinMax(noiseType);	
+	
 	if (normalizeMode != NoNormalization){
 		for(int x = 0; x < NoiseMap.Size.X; x++) {
 			for(int y = 0; y < NoiseMap.Size.Y; y++) {
 				for(int z = 0; z < NoiseMap.Size.Z; z++) {
 					FIntVector index = FIntVector(FMath::Floor(NoiseMap.Position.X) + x, FMath::Floor(NoiseMap.Position.Y) + y, FMath::Floor(NoiseMap.Position.Z) + z);
-					switch (normalizeMode){
-					case Local:
-						NoiseMap.Map[index] = (1-(-1))/(NoiseMap.MinMax.max-NoiseMap.MinMax.min)*(NoiseMap.Map[index]-NoiseMap.MinMax.min)+(-1);
-						break;
-					case LocalPositive:
-						NoiseMap.Map[index] = (NoiseMap.Map[index]-NoiseMap.MinMax.min)/(NoiseMap.MinMax.max-NoiseMap.MinMax.min);
-						break;
-					case Global:
-						NoiseMap.Map[index] = (1-(-1))/(max-min)*(NoiseMap.Map[index]-min)+(-1);
-						break;
-					case GlobalPositive:
-						NoiseMap.Map[index] = (NoiseMap.Map[index] - (min)) / (max - (min));
-						break;
-					default:
-						break;
-					}
+					NoiseMap.Map[index] = Normalize(normalizeMode,NoiseMap.Map[index],NoiseMap.MinMax,typeMinMax);
 				}
 			}
 		}
 	}
-	// return NoiseMap;
 }
 
 //Maps
