@@ -50,6 +50,10 @@ public:
 protected:
 	virtual void BeginPlay() override;
 
+	void Generate();
+	
+	void GenerateLayered();
+	
 	void SetTexture(UTexture2D* Texture);
 
 public:
