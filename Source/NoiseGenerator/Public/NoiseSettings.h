@@ -51,6 +51,9 @@ struct FNoiseSettings
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	TEnumAsByte<NoiseNormalizeMode> normalizeMode;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	float gain;
 	
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, meta= (ClampMin=0.000001f))
 	float scale;
@@ -78,6 +81,9 @@ struct FNoiseSettings
 	
 	UPROPERTY(EditAnywhere,BlueprintReadWrite)
 	float domainWarpingScale;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	UCurveFloat* curve;
 
 	FNoiseSettings() 
 	{
@@ -120,13 +126,41 @@ struct FNoiseSettings
 	}
 };
 
-USTRUCT(BlueprintType)
-struct FLayeredNoiseSettings 
-{
-	GENERATED_BODY()
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	FNoiseSettings LayerSettings;
+// USTRUCT(BlueprintType)
+// struct FLayeredNoiseSettings 
+// {
+// 	GENERATED_BODY()
+//
+// 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+// 	FNoiseSettings Settings;
+//
+// 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+// 	UCurveFloat* Curve;
+//
+// 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+// 	float Gain = 1.0f;
+//
+// 	FLayeredNoiseSettings()
+// 	{
+// 		Settings = FNoiseSettings();
+// 		Curve = nullptr;
+// 	}
+// 	FShaderNoiseSettings ToShaderSettings()
+// 	{
+// 		FShaderNoiseSettings settings;
+// 		settings.Offset = (FVector3f)Settings.offset;
+// 		settings.Octaves = Settings.octaves;
+// 		settings.Frequency = Settings.frequency;
+// 		settings.Lacunarity = Settings.lacunarity;
+// 		settings.Persistence = Settings.persistence;
+// 		settings.Scale = Settings.scale;
+// 		settings.Filter = Settings.filter.GetValue();
+// 		settings.Type = Settings.type.GetValue();
+// 		settings.NormalizeMode = Settings.normalizeMode.GetValue();
+// 		settings.DomainWarp = Settings.domainWarping ? Settings.domainWarpingScale : 0;
+// 		return settings;
+// 	}
+// };
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	UCurveFloat* LayerCurve;

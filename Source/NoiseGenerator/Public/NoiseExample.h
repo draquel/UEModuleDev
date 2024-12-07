@@ -29,7 +29,7 @@ public:
 	FIntVector Position;
 
 	UPROPERTY(EditAnywhere)
-	TArray<FLayeredNoiseSettings> NoiseSettings;
+	TArray<FNoiseSettings> NoiseSettings;
 
 	UPROPERTY(EditAnywhere)
 	UCurveLinearColor* ColorCurve;
@@ -52,5 +52,4 @@ public:
 	virtual void Tick(float DeltaTime) override;
 
 	virtual void OnConstruction(const FTransform& Transform) override;
-	
 };

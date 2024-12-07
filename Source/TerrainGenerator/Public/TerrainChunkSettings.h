@@ -57,25 +57,25 @@ struct FFoliageGroupData
 /*
  *	TerrainNoiseSettings - Stores NoiseSettings for each of the terrain noise maps
  */
-USTRUCT()
-struct FTerrainNoiseSettings
-{
-	GENERATED_BODY()
-
-	UPROPERTY(EditAnywhere)
-	FLayeredNoiseSettings Continentalness;
-	
-	UPROPERTY(EditAnywhere)
-	FLayeredNoiseSettings Errosion;
-
-	UPROPERTY(EditAnywhere)
-	FLayeredNoiseSettings PeaksVallies;
-
-	TArray<FLayeredNoiseSettings> ToTArray()
-	{
-		return { Continentalness, Errosion, PeaksVallies };
-	}
-};
+// USTRUCT()
+// struct FTerrainNoiseSettings
+// {
+// 	GENERATED_BODY()
+//
+// 	UPROPERTY(EditAnywhere)
+// 	FLayeredNoiseSettings Continentalness;
+// 	
+// 	UPROPERTY(EditAnywhere)
+// 	FLayeredNoiseSettings Errosion;
+//
+// 	UPROPERTY(EditAnywhere)
+// 	FLayeredNoiseSettings PeaksVallies;
+//
+// 	TArray<FLayeredNoiseSettings> ToTArray()
+// 	{
+// 		return { Continentalness, Errosion, PeaksVallies };
+// 	}
+// };
 
 /*
  * TerrainChunkSettings - Configuration for instancing consistent TerrainChunks.
@@ -121,8 +121,8 @@ struct FTerrainChunkSettings
 	UPROPERTY(EditAnywhere)
 	FNoiseSettings NoiseSettings;
 
-	UPROPERTY(EditAnywhere)
-	FTerrainNoiseSettings TerrainNoiseSettings;
+	// UPROPERTY(EditAnywhere)
+	// FTerrainNoiseSettings TerrainNoiseSettings;
 
 	UPROPERTY(EditAnywhere)
 	int32 MeshResolution = 64;

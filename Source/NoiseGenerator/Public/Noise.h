@@ -239,16 +239,16 @@ public:
 
 	//CPU 2D Maps
 	static FNoiseMap2d GenerateMap2D(FIntVector pos, FIntVector2 mapSize, FNoiseSettings* NoiseSettings);
-	static FNoiseMap2d GenerateMap2D(FIntVector pos, FIntVector2 mapSize, TArray<FLayeredNoiseSettings>* NoiseSettings);
+	static FNoiseMap2d GenerateMap2D(FIntVector pos, FIntVector2 mapSize, TArray<FNoiseSettings>* NoiseSettings);
 	static void GenerateMap2D(FNoiseMap2d& NoiseMap,TArray<FNoiseLayerData>* layerData);
 
 	//Needs unique Name -- Accessors for CPU & GPU Generation, with callback to handle Async uniformily.
 	static void GenerateMap2D(FIntVector pos, FIntVector2 mapSize, FNoiseSettings NoiseSettings, TFunction<void(FNoiseMap2d NoiseMap)> Callback);
-	static void GenerateMap2D(FIntVector pos, FIntVector2 mapSize,  TArray<FLayeredNoiseSettings> NoiseSettings, TFunction<void(FNoiseMap2d NoiseMap)> Callback);
+	static void GenerateMap2D(FIntVector pos, FIntVector2 mapSize,  TArray<FNoiseSettings> NoiseSettings, TFunction<void(FNoiseMap2d NoiseMap)> Callback);
 	
 	//2D TEXTURE Generators
 	static UTexture2D* GenerateTexture(FIntVector pos, FIntVector2 mapSize, FNoiseSettings* NoiseSettings, UCurveLinearColor* ColorCurve = nullptr);
-	static UTexture2D* GenerateTexture(FIntVector pos, FIntVector2 mapSize, TArray<FLayeredNoiseSettings>* NoiseSettings, UCurveLinearColor* ColorCurve = nullptr);
+	static UTexture2D* GenerateTexture(FIntVector pos, FIntVector2 mapSize, TArray<FNoiseSettings>* NoiseSettings, UCurveLinearColor* ColorCurve = nullptr);
 	static UTexture2D* GenerateTexture(FNoiseMap2d* NoiseMap, UCurveLinearColor* ColorCurve = nullptr);
 
 	static FNoiseMap3d GenerateMap3D(FIntVector pos, FIntVector mapSize, FNoiseSettings* NoiseSettings);

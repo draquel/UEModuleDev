@@ -199,17 +199,17 @@ FNoiseMap2d UNoise::GenerateMap2D(FIntVector pos, FIntVector2 mapSize, FNoiseSet
 	return NoiseMap;
 }
 
-FNoiseMap2d UNoise::GenerateMap2D(FIntVector pos, FIntVector2 mapSize, TArray<FLayeredNoiseSettings>* NoiseSettings)
+FNoiseMap2d UNoise::GenerateMap2D(FIntVector pos, FIntVector2 mapSize, TArray<FNoiseSettings>* NoiseSettings)
 {
 	FNoiseMap2d NoiseMap = FNoiseMap2d(pos,mapSize);
 	TArray<FNoiseLayerData> layerData = TArray<FNoiseLayerData>();
 
 	for (int i = 0; i < NoiseSettings->Num(); i++){
-		if (NoiseSettings->operator[](i).Gain <= 0){ continue; }
+		if (NoiseSettings->operator[](i).gain <= 0){ continue; }
 		FNoiseLayerData data = FNoiseLayerData();
-		data.noiseMap = GenerateMap2D(pos,mapSize,&NoiseSettings->operator[](i).Settings);
-		data.gain = NoiseSettings->operator[](i).Gain;
-		data.curve = NoiseSettings->operator[](i).Curve;
+		data.noiseMap = GenerateMap2D(pos,mapSize,&NoiseSettings->operator[](i));
+		data.gain = NoiseSettings->operator[](i).gain;
+		data.curve = NoiseSettings->operator[](i).curve;
 		layerData.Add(data);
 	}
 
@@ -269,18 +269,18 @@ void UNoise::GenerateMap2D(FIntVector pos, FIntVector2 mapSize, FNoiseSettings N
 	});
 }
 
-void UNoise::GenerateMap2D(FIntVector pos, FIntVector2 mapSize, TArray<FLayeredNoiseSettings> NoiseSettings, TFunction<void(FNoiseMap2d NoiseMap)> Callback)
+void UNoise::GenerateMap2D(FIntVector pos, FIntVector2 mapSize, TArray<FNoiseSettings> NoiseSettings, TFunction<void(FNoiseMap2d NoiseMap)> Callback)
 {
 	//Count of NoiseSettings with a positive gain in the array
-	int32 count = Algo::Accumulate(NoiseSettings, 0, [](int32 Total, const FLayeredNoiseSettings& Item) { return Total + (Item.Gain > 0 ? 1 : 0); });
+	int32 count = Algo::Accumulate(NoiseSettings, 0, [](int32 Total, const FNoiseSettings& Item) { return Total + (Item.gain > 0 ? 1 : 0); });
 	if (count == 0){
 		UE_LOG(NoiseGenerator,Error,TEXT("UNoise::GenerateMap2D() ==> No Settings Defined or Total Gain <= 0"));
 		return;
 	}
 	if (count == 1) {
 		for (int i = 0; i < NoiseSettings.Num(); i++) {
-			if (NoiseSettings[i].Gain > 0.0f) {
-				GenerateMap2D(pos,mapSize,NoiseSettings[i].Settings,Callback);
+			if (NoiseSettings[i].gain > 0.0f) {
+				GenerateMap2D(pos,mapSize,NoiseSettings[i],Callback);
 				break;
 			}
 		}
@@ -288,19 +288,19 @@ void UNoise::GenerateMap2D(FIntVector pos, FIntVector2 mapSize, TArray<FLayeredN
 	}
 	
 	int cycles = 0;
-	for (auto Layer : NoiseSettings){ if (Layer.Gain > 0) { cycles += (mapSize.X * mapSize.Y) * Layer.Settings.octaves; } }	
+	for (auto Layer : NoiseSettings){ if (Layer.gain > 0) { cycles += (mapSize.X * mapSize.Y) * Layer.octaves; } }	
 	double start = FPlatformTime::Seconds();
 
 	//Prepare Results
 	TArray<FNoiseComputeShaderDispatchParams> Params;
 	TMap<int,FNoiseMap2d> CPUMaps;
 	for (int i = 0; i < NoiseSettings.Num(); i++){
-		if (NoiseSettings[i].Gain <= 0.0f) { continue; }
-		if (NoiseSettings[i].Settings.source == GPU){
-			Params.Add(FNoiseComputeShaderInterface::BuildParams((FVector3f)pos, FVector3f(mapSize.X,mapSize.Y,1.0f),NoiseSettings[i].Settings));
+		if (NoiseSettings[i].gain <= 0.0f) { continue; }
+		if (NoiseSettings[i].source == GPU){
+			Params.Add(FNoiseComputeShaderInterface::BuildParams((FVector3f)pos, FVector3f(mapSize.X,mapSize.Y,1.0f),NoiseSettings[i]));
 		}
-		if (NoiseSettings[i].Settings.source == CPU) {
-			CPUMaps.Add(i,GenerateMap2D(pos,mapSize,&NoiseSettings[i].Settings));
+		if (NoiseSettings[i].source == CPU) {
+			CPUMaps.Add(i,GenerateMap2D(pos,mapSize,&NoiseSettings[i]));
 		}
 	}
 
@@ -310,15 +310,15 @@ void UNoise::GenerateMap2D(FIntVector pos, FIntVector2 mapSize, TArray<FLayeredN
 		int used = 0; // buffers checked / converted
 		TArray<FNoiseLayerData> ResultData;
 		for (int i = 0; i < NoiseSettings.Num(); i++) {
-			if (NoiseSettings[i].Settings.source == CPU && CPUMaps.Contains(i)) {
-				ResultData.Add(FNoiseLayerData(CPUMaps[i],NoiseSettings[i].Gain,NoiseSettings[i].Curve));
+			if (NoiseSettings[i].source == CPU && CPUMaps.Contains(i)) {
+				ResultData.Add(FNoiseLayerData(CPUMaps[i],NoiseSettings[i].gain,NoiseSettings[i].curve));
 			}
-			if (NoiseSettings[i].Settings.source == GPU) {
+			if (NoiseSettings[i].source == GPU) {
 				if (used >= available) { continue; } //Checked all buffers
 			 	if (OutputVals[used].Num() == 0) { used++; continue; } //Buffer has no data
-				ResultData.Add(FNoiseLayerData(FNoiseMap2d(pos,mapSize,OutputVals[used]),NoiseSettings[i].Gain,NoiseSettings[i].Curve));
-				if (NoiseSettings[i].Settings.normalizeMode == Local || NoiseSettings[i].Settings.normalizeMode == LocalPositive){
-					Normalize(&ResultData[i].noiseMap,NoiseSettings[i].Settings.normalizeMode, NoiseSettings[i].Settings.type);
+				ResultData.Add(FNoiseLayerData(FNoiseMap2d(pos,mapSize,OutputVals[used]),NoiseSettings[i].gain,NoiseSettings[i].curve));
+				if (NoiseSettings[i].normalizeMode == Local || NoiseSettings[i].normalizeMode == LocalPositive){
+					Normalize(&ResultData[i].noiseMap,NoiseSettings[i].normalizeMode, NoiseSettings[i].type);
 				}
 				used++;
 			}
@@ -339,7 +339,7 @@ UTexture2D* UNoise::GenerateTexture(FIntVector pos, FIntVector2 mapSize, FNoiseS
 	return GenerateTexture(&NoiseMap,ColorCurve);
 }
 
-UTexture2D* UNoise::GenerateTexture(FIntVector pos, FIntVector2 mapSize,TArray<FLayeredNoiseSettings>* NoiseSettings, UCurveLinearColor* ColorCurve)
+UTexture2D* UNoise::GenerateTexture(FIntVector pos, FIntVector2 mapSize,TArray<FNoiseSettings>* NoiseSettings, UCurveLinearColor* ColorCurve)
 {
 	FNoiseMap2d NoiseMap = GenerateMap2D(pos,mapSize,NoiseSettings);
 	return GenerateTexture(&NoiseMap,ColorCurve);

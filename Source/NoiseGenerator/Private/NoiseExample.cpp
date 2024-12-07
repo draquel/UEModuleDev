@@ -25,7 +25,7 @@ void ANoiseExample::Regenerate()
 void ANoiseExample::RandomSeed()
 {
 	for(int i = 0; i < NoiseSettings.Num(); i++)	{
-		NoiseSettings[i].Settings.seed = FMath::RandRange(-100000000,100000000);	
+		NoiseSettings[i].seed = FMath::RandRange(-100000000,100000000);	
 	}	
 	Regenerate();
 }
