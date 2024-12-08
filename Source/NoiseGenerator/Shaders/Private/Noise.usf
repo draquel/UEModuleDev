@@ -136,8 +136,7 @@ float Noise3(uint3 Coord, float3 Position, float3 Size, float3 Offset, int Type,
 	float max = 1.0f;
 	switch (Type){
 	case 1: //Perlin
-		switch (DensityFunction)
-		{
+		switch (DensityFunction){
 			default:
 				noise = ClassicFBM(sample, Octaves, Frequency, Lacunarity, Persistence);
 				break;
@@ -153,7 +152,17 @@ float Noise3(uint3 Coord, float3 Position, float3 Size, float3 Offset, int Type,
 		max = 0.375f;
 		break;
 	case 2: //Simplex
-		noise = SimplexFBM(sample, Octaves, Frequency, Lacunarity, Persistence);
+		switch (DensityFunction){
+		default:
+			noise = SimplexFBM(sample, Octaves, Frequency, Lacunarity, Persistence);
+			break;
+		case 1:
+			noise = mapPos.z + SimplexFBM(sample, Octaves, Frequency, Lacunarity, Persistence)*Size.z; 
+			break;
+		case 2:
+			noise = 500 - length(mapPos) + SimplexFBM(sample, Octaves, Frequency, Lacunarity, Persistence);
+			break;
+		}
 		// if (DomainWarp > 0){ noise = snoiseDomainWarping(sample,DomainWarp, Octaves, Frequency, Lacunarity, Persistence); }
 		min = -0.625f;
 		max = 0.525f; 
