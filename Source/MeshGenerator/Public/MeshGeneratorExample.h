@@ -22,20 +22,29 @@ public:
 
 	UPROPERTY(EditAnywhere)
 	UMaterial* Material;
-
+	UPROPERTY(EditAnywhere)
+	float UVScale = 1.0f;
+	
 	UPROPERTY(EditAnywhere)
 	FVector Size;
+	UPROPERTY(EditAnywhere)
+	int StepSize;
+	
 	UPROPERTY(EditAnywhere)
 	float isoLevel = 0.5f;
 	UPROPERTY(EditAnywhere)
 	bool interpolate = false;
 	UPROPERTY(EditAnywhere)
 	bool showSides = false;
+
 	UPROPERTY(EditAnywhere)
-	float UVScale = 1.0f;
+	bool autoUpdate = false;
 
 	UPROPERTY(EditAnywhere)
 	FNoiseSettings NoiseSettings = FNoiseSettings(D3);
+
+	UPROPERTY(Transient)
+	bool bHasBeenConstructed = false;
 	
 
 protected:

@@ -1,5 +1,6 @@
 #include "MeshGeneratorExample.h"
 
+#include "MeshGenerator.h"
 #include "Noise.h"
 #include "MeshData/MeshDataGenerator.h"
 
@@ -25,8 +26,8 @@ void AMeshGeneratorExample::BeginPlay()
 void AMeshGeneratorExample::Generate()
 {
 	Mesh->SetMaterial(0,Material);
-	UNoise::GenerateMap3D((FIntVector)GetActorLocation(),(FIntVector)(Size), NoiseSettings,Floor,[this](FNoiseMap3d NoiseMap){
-		FMeshData Data = UMeshDataGenerator::MarchingCubes(NoiseMap,GetActorLocation(),Size,UVScale,isoLevel,interpolate,showSides);
+	UNoise::GenerateMap3D((FIntVector)GetActorLocation(),(FIntVector)(Size+StepSize), NoiseSettings,Floor,[this](FNoiseMap3d NoiseMap){
+		FMeshData Data = UMeshDataGenerator::MarchingCubes(NoiseMap,GetActorLocation(),Size,StepSize,UVScale,isoLevel,interpolate, showSides);
 		Data.CreateProceduralMesh(Mesh);
 		DebugDraw();
 		Data.Reset();	
@@ -42,7 +43,13 @@ void AMeshGeneratorExample::Tick(float DeltaTime)
 void AMeshGeneratorExample::OnConstruction(const FTransform& Transform)
 {
 	Super::OnConstruction(Transform);
-	Generate();
+
+	if (!bHasBeenConstructed){
+		bHasBeenConstructed = true;
+		UE_LOG(MeshGenerator, Display, TEXT("MeshGeneratorExample::OnConstruction() - Initialized"));
+		return;
+	}
+	if (autoUpdate)	Generate();
 }
 
 void AMeshGeneratorExample::DebugDraw()

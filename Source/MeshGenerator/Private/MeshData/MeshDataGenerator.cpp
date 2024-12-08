@@ -130,75 +130,84 @@ FMeshData UMeshDataGenerator::QuadTreeMesh(QuadTree* QTree, float UVScale, int d
 	return MeshData;
 }
 
-FMeshData UMeshDataGenerator::MarchingCubes(FNoiseMap3d NoiseMap, FVector position, FVector size, float UVScale, float isoLevel, bool interpolate, bool renderSides)
+FMeshData UMeshDataGenerator::MarchingCubes(FNoiseMap3d NoiseMap, FVector position, FVector size, int stepSize, float UVScale, float isoLevel, bool interpolate, bool renderSides)
 {
-	double start = FPlatformTime::Seconds();
-	int stepSize = 100;
-	FMeshData MeshData = FMeshData();
-	MeshData.UVScale = UVScale;
+    FMeshData MeshData = FMeshData();
+    MeshData.UVScale = UVScale;
+    double start = FPlatformTime::Seconds();
 
-	// FNoiseMap3d NoiseMap = UNoise::GenerateMap3D((FIntVector)position, (FIntVector)size+FIntVector(1,1,1), NoiseSettings, NoiseDensityFunction::Floor);
-
-	for (int x = 0; x < size.X-1; x++) {
-		for (int y = 0; y < size.Y-1; y++) {
-			for (int z = 0; z < size.Z-1; z++) {
-				FVector pos = FVector(x,y,z);
-				FVector sample = (position + pos);
-				
-				TArray<float> cubeValues = TArray<float>();
-				for (int i = 0; i < UMarchingCubes::cornerOffsets.Num(); i++) {
-					FIntVector mp =(FIntVector) (pos + UMarchingCubes::cornerOffsets[i]);
-					FIntVector s = (FIntVector)(sample + UMarchingCubes::cornerOffsets[i]);
-					if (renderSides && (mp.X >= size.X-1 || mp.Y >= size.Y-1 || mp.Z >= size.Z-1 || mp.X <= 0 || mp.Y <= 0 || mp.Z <= 0)) { cubeValues.Add(isoLevel); }
-					else{ cubeValues.Add(NoiseMap.Map[s]); }
-				}
-
-				int cubeIndex = 0;
-				for (int i = 0; i < cubeValues.Num(); i++){
-					if (cubeValues[i] < isoLevel) {
-						cubeIndex |= 1 << i;
-					}
-				}
-				
-				TArray<int> edges = UMarchingCubes::triTable[cubeIndex];
-
-				for (int i = 0; edges[i] != -1; i += 3) {
-					int e00 = UMarchingCubes::edgeConnections[edges[i]][0];
-					int e01 = UMarchingCubes::edgeConnections[edges[i]][1];
-
-					int e10 = UMarchingCubes::edgeConnections[edges[i + 1]][0];
-					int e11 = UMarchingCubes::edgeConnections[edges[i + 1]][1];
-
-					int e20 = UMarchingCubes::edgeConnections[edges[i + 2]][0];
-					int e21 = UMarchingCubes::edgeConnections[edges[i + 2]][1];
-
-					FVector a;
-					FVector b;
-					FVector c;
-					
-					if (interpolate) {
-						a = Interp(UMarchingCubes::cornerOffsets[e00], cubeValues[e00], UMarchingCubes::cornerOffsets[e01], cubeValues[e01], isoLevel) + pos;
-						b = Interp(UMarchingCubes::cornerOffsets[e10], cubeValues[e10], UMarchingCubes::cornerOffsets[e11], cubeValues[e11], isoLevel) + pos;
-						c = Interp(UMarchingCubes::cornerOffsets[e20], cubeValues[e20], UMarchingCubes::cornerOffsets[e21], cubeValues[e21], isoLevel) + pos;
-					} else {
-						a = Default(UMarchingCubes::cornerOffsets[e00],UMarchingCubes::cornerOffsets[e01]) + pos;
-						b = Default(UMarchingCubes::cornerOffsets[e10],UMarchingCubes::cornerOffsets[e11]) + pos;
-						c = Default(UMarchingCubes::cornerOffsets[e20],UMarchingCubes::cornerOffsets[e21]) + pos;
-					}
-					MeshData.AddTriangle(a, b, c);
-				}
-			}
-		}
+	//Alignment error
+	if (FMath::Modulo(size.X,stepSize) != 0 || FMath::Modulo(size.Y, stepSize) != 0 || FMath::Modulo(size.Z, stepSize) != 0){
+		UE_LOG(MeshGenerator,Error,TEXT("MeshGenerator::MarchingCubes ==> The MapSize[(%f,%f,%f)] must be evenly divisible by the StepSize[%d]."),size.X,size.Y,size.Z,stepSize);
+		return MeshData;
 	}
 
-	//SUPER EXPENSIVE HERE (and everywhere)--- needs alternatives / optimization???
-	MeshData.CalculateTangents();
-	
-	double end = FPlatformTime::Seconds();
-	UE_LOG(MeshGenerator, Log, TEXT("MarchingCubes() - V:%d  Runtime: %f"), MeshData.Vertices.Num(), end - start);
-	
-	return MeshData;
+    for (int x = 0; x < size.X - 1; x += stepSize) {
+        for (int y = 0; y < size.Y - 1; y += stepSize) {
+            for (int z = 0; z < size.Z - 1; z += stepSize) {
+                FVector pos = FVector(x, y, z);
+                FVector sample = position + pos;
+
+                TArray<float> cubeValues;
+                for (int i = 0; i < UMarchingCubes::cornerOffsets.Num(); i++) {
+                	FIntVector mp =(FIntVector) (pos + UMarchingCubes::cornerOffsets[i]*stepSize);
+                	FIntVector s = (FIntVector)(sample + UMarchingCubes::cornerOffsets[i]*stepSize);
+                    if (renderSides && (mp.X >= size.X - 1 || mp.Y >= size.Y - 1 || mp.Z >= size.Z - 1 || mp.X <= 0 || mp.Y <= 0 || mp.Z <= 0)) {
+                        cubeValues.Add(isoLevel);
+                    } else {
+                        cubeValues.Add(NoiseMap.Map[s]);
+                    }
+                }
+
+                int cubeIndex = 0;
+                for (int i = 0; i < cubeValues.Num(); i++) {
+                    if (cubeValues[i] < isoLevel) {
+                        cubeIndex |= 1 << i;
+                    }
+                }
+
+                TArray<int> edges = UMarchingCubes::triTable[cubeIndex];
+                for (int i = 0; edges[i] != -1; i += 3) {
+                    int e00 = UMarchingCubes::edgeConnections[edges[i]][0];
+                    int e01 = UMarchingCubes::edgeConnections[edges[i]][1];
+
+                    int e10 = UMarchingCubes::edgeConnections[edges[i + 1]][0];
+                    int e11 = UMarchingCubes::edgeConnections[edges[i + 1]][1];
+
+                    int e20 = UMarchingCubes::edgeConnections[edges[i + 2]][0];
+                    int e21 = UMarchingCubes::edgeConnections[edges[i + 2]][1];
+
+                    FVector a;
+                    FVector b;
+                    FVector c;
+
+                    if (interpolate) {
+                        a = Interp(UMarchingCubes::cornerOffsets[e00] * stepSize, cubeValues[e00],
+                                   UMarchingCubes::cornerOffsets[e01] * stepSize, cubeValues[e01], isoLevel) + pos;
+                        b = Interp(UMarchingCubes::cornerOffsets[e10] * stepSize, cubeValues[e10],
+                                   UMarchingCubes::cornerOffsets[e11] * stepSize, cubeValues[e11], isoLevel) + pos;
+                        c = Interp(UMarchingCubes::cornerOffsets[e20] * stepSize, cubeValues[e20],
+                                   UMarchingCubes::cornerOffsets[e21] * stepSize, cubeValues[e21], isoLevel) + pos;
+                    } else {
+                        a = Default(UMarchingCubes::cornerOffsets[e00] * stepSize, UMarchingCubes::cornerOffsets[e01] * stepSize) + pos;
+                        b = Default(UMarchingCubes::cornerOffsets[e10] * stepSize, UMarchingCubes::cornerOffsets[e11] * stepSize) + pos;
+                        c = Default(UMarchingCubes::cornerOffsets[e20] * stepSize, UMarchingCubes::cornerOffsets[e21] * stepSize) + pos;
+                    }
+                    MeshData.AddTriangle(a, b, c);
+                }
+            }
+        }
+    }
+
+    // SUPER EXPENSIVE HERE (and everywhere)--- needs alternatives / optimization???
+    MeshData.CalculateTangents();
+
+    double end = FPlatformTime::Seconds();
+    UE_LOG(MeshGenerator, Log, TEXT("MeshGenerator::MarchingCubes ==> Verts:%d,  Runtime: %f"), MeshData.Vertices.Num(), end - start);
+
+    return MeshData;
 }
+
 FVector UMeshDataGenerator::Interp(FVector edgeVertex1, float valueAtVertex1, FVector edgeVertex2, float valueAtVertex2, float isoLevel) {
 	return (edgeVertex1 + (isoLevel - valueAtVertex1) * (edgeVertex2 - edgeVertex1) / (valueAtVertex2 - valueAtVertex1));
 }
