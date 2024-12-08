@@ -3,6 +3,15 @@
 #include "NoiseSettings.generated.h"
 
 UENUM(BlueprintType)
+enum NoiseMode
+{
+	NoMode = 0 UMETA(Hidden),
+	D1 = 1,
+	D2 = 2,
+	D3 = 3
+};
+
+UENUM(BlueprintType)
 enum NoiseSource
 {
 	NoSource = 0 UMETA(Hidden),
@@ -35,11 +44,46 @@ enum NoiseNormalizeMode
 	GlobalPositive = 4
 };
 
+UENUM(BlueprintType)
+enum NoiseDensityFunction
+{
+	NoDensityFunction = 0,
+	Floor = 1,
+	Sphere = 2
+};
+
+USTRUCT(BlueprintType)
+struct FShaderNoiseSettingsA
+{
+	GENERATED_BODY()
+	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	FVector4 Offset;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	FVector4 General;
+};
+
+USTRUCT(BlueprintType)
+struct FShaderNoiseSettingsB
+{
+	GENERATED_BODY()
+	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	FVector4 FBM;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	FVector4 Options;
+};
+
 USTRUCT(BlueprintType)
 struct FNoiseSettings
 {
 	GENERATED_BODY()
 
+	UPROPERTY(BlueprintReadWrite)
+	TEnumAsByte<NoiseMode> mode;
+	
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	TEnumAsByte<NoiseSource> source;
 	
@@ -85,13 +129,15 @@ struct FNoiseSettings
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	UCurveFloat* curve;
 
-	FNoiseSettings() 
+	explicit FNoiseSettings(NoiseMode InMode = D2) 
 	{
+		mode = InMode;
 		source = CPU;
 		type = Simplex;
 		filter = NoFilter;
 		normalizeMode = NoNormalization;
-		
+
+		gain = 1.0f;
 		scale = 5000.0f;
 		seed = 12345;
 		offset = FVector(1230, 3210, 3201);
@@ -112,6 +158,7 @@ struct FNoiseSettings
 			type == other.type &&
 			filter == other.filter &&
 			normalizeMode == other.normalizeMode &&
+			gain == other.gain &&
 			scale == other.scale &&
 			seed == other.seed &&
 			offset == other.offset &&
@@ -120,7 +167,8 @@ struct FNoiseSettings
 			persistence == other.persistence &&
 			frequency == other.frequency &&
 			domainWarping == other.domainWarping &&
-			domainWarpingScale == other.domainWarpingScale
+			domainWarpingScale == other.domainWarpingScale &&
+			curve == other.curve
 		) {	return true; }
 		return false;
 	}

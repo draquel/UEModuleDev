@@ -251,7 +251,8 @@ public:
 	static UTexture2D* GenerateTexture(FIntVector pos, FIntVector2 mapSize, TArray<FNoiseSettings>* NoiseSettings, UCurveLinearColor* ColorCurve = nullptr);
 	static UTexture2D* GenerateTexture(FNoiseMap2d* NoiseMap, UCurveLinearColor* ColorCurve = nullptr);
 
-	static FNoiseMap3d GenerateMap3D(FIntVector pos, FIntVector mapSize, FNoiseSettings* NoiseSettings);
+	static FNoiseMap3d GenerateMap3D(FIntVector pos, FIntVector mapSize, FNoiseSettings* NoiseSettings, NoiseDensityFunction DensityFunction = NoDensityFunction);
+	static void GenerateMap3D(FIntVector pos, FIntVector mapSize, FNoiseSettings NoiseSettings, NoiseDensityFunction DensityFunction, TFunction<void(FNoiseMap3d NoiseMap)> Callback);
 
 	static FVector2D PoissonSample(const FVector2D& center, float minRadius, float maxRadius);
 	static TArray<FVector2D> PoissonDiscSample(const FVector2D& topLeft, const FVector2D& bottomRight, float minDist, int newPointsCount);

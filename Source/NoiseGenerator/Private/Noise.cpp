@@ -371,14 +371,27 @@ UTexture2D* UNoise::GenerateTexture(FNoiseMap2d* NoiseMap, UCurveLinearColor* Co
 	return texture;	
 }
 
-FNoiseMap3d UNoise::GenerateMap3D(FIntVector pos, FIntVector mapSize, FNoiseSettings* NoiseSettings)
+FNoiseMap3d UNoise::GenerateMap3D(FIntVector pos, FIntVector mapSize, FNoiseSettings* NoiseSettings, NoiseDensityFunction DensityFunction)
 {
 	FNoiseMap3d NoiseMap = FNoiseMap3d(pos,mapSize);
-	for(int x = pos.X; x < pos.X+mapSize.X; x++) {
-		for(int y = pos.Y; y < pos.Y+mapSize.Y; y++) {
-			for(int z = pos.Z; z < pos.Z+mapSize.Z; z++) {
-				FIntVector index = FIntVector(x, y, z);
-				NoiseMap.Map.Add(index,Evaluate3D(FVector(x,y,z),NoiseSettings));
+	for(int x = 0; x < mapSize.X; x++) {
+		for(int y = 0; y < mapSize.Y; y++) {
+			for(int z = 0; z < mapSize.Z; z++) {
+				FIntVector index = FIntVector(pos.X + x, pos.Y + y, pos.Z + z);
+				float value;
+				switch(DensityFunction)	{
+					case Floor:
+						value = index.Z + (Evaluate3D(FVector(index.X,index.Y,index.Z),NoiseSettings)*mapSize.Z);
+						break;
+					case Sphere:
+						value = 500 - index.Size() + Evaluate3D(FVector(index.X,index.Y,index.Z),NoiseSettings);
+						break;
+					case NoDensityFunction:
+					default:
+						value = Evaluate3D(FVector(index.X,index.Y,index.Z),NoiseSettings);
+						break;
+				}
+				NoiseMap.Map.Add(index,value);
 				NoiseMap.MinMax.Add(NoiseMap.Map[index]);
 			}
 		}
@@ -389,6 +402,32 @@ FNoiseMap3d UNoise::GenerateMap3D(FIntVector pos, FIntVector mapSize, FNoiseSett
 	return NoiseMap;
 }
 
+void UNoise::GenerateMap3D(FIntVector pos, FIntVector mapSize, FNoiseSettings NoiseSettings, NoiseDensityFunction DensityFunction, TFunction<void(FNoiseMap3d NoiseMap)> Callback)
+{
+	int cycles = mapSize.X * mapSize.Y * NoiseSettings.octaves;
+	double start = FPlatformTime::Seconds();
+
+	if(NoiseSettings.source == CPU) {
+		FNoiseMap3d NoiseMap = GenerateMap3D(pos,mapSize,&NoiseSettings,DensityFunction);
+		double end = FPlatformTime::Seconds();
+		UE_LOG(NoiseGenerator,Log,TEXT("UNoise::GenerateMap2D() ==> %s-%s, Cycles: %d, RunTime: %fs"),*UEnum::GetValueAsString(NoiseSettings.source),*UEnum::GetValueAsString(NoiseSettings.type),cycles,end-start);
+		Callback(NoiseMap);
+		return;
+	}
+
+	//NoiseSettings.source == GPU
+	FNoiseComputeShaderDispatchParams Params = FNoiseComputeShaderInterface::BuildParams((FVector3f)pos, FVector3f(mapSize.X,mapSize.Y,mapSize.Z), NoiseSettings, D3,DensityFunction);
+	FNoiseComputeShaderInterface::Dispatch(Params,[pos,mapSize,NoiseSettings,Callback,cycles,start](TArray<float> OutputVals){
+		UE_LOG(LogTemp,Display,TEXT("Generating Map: [%d]"),OutputVals.Num());
+		FNoiseMap3d NoiseMap = FNoiseMap3d(pos,mapSize,OutputVals);
+		if (NoiseSettings.normalizeMode == Local || NoiseSettings.normalizeMode == LocalPositive){
+			Normalize(&NoiseMap,NoiseSettings.normalizeMode,NoiseSettings.type);
+		}
+		double end = FPlatformTime::Seconds();
+		UE_LOG(NoiseGenerator,Log,TEXT("UNoise::GenerateMap2D() ==> %s-%s, Cycles: %d, RunTime: %fs"),*UEnum::GetValueAsString(NoiseSettings.source),*UEnum::GetValueAsString(NoiseSettings.type),cycles,end-start);
+		Callback(NoiseMap);
+	});
+}
 //Poisson
 
 FVector2D UNoise::PoissonSample(const FVector2D& center, float minRadius, float maxRadius)

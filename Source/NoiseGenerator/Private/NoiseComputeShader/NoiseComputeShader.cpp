@@ -56,6 +56,7 @@ public:
 		SHADER_PARAMETER(FVector3f, Position)
 		SHADER_PARAMETER(FVector3f, Size)
 		SHADER_PARAMETER(FVector3f, Offset)
+		SHADER_PARAMETER(int, Mode)
 		SHADER_PARAMETER(int, Octaves)
 		SHADER_PARAMETER(float, Frequency)
 		SHADER_PARAMETER(float, Lacunarity)
@@ -63,6 +64,7 @@ public:
 		SHADER_PARAMETER(float, Scale)
 		SHADER_PARAMETER(int, Filter)
 		SHADER_PARAMETER(int, Type)
+		SHADER_PARAMETER(int, DensityFunction)
 		SHADER_PARAMETER(int, NormalizeMode)
 		SHADER_PARAMETER(float, DomainWarp)
 
@@ -107,19 +109,21 @@ private:
 //                            ShaderType                            ShaderPath                     Shader function name    Type
 IMPLEMENT_GLOBAL_SHADER(FNoiseComputeShader, "/NoiseShaders/NoiseComputeShader.usf", "NoiseComputeShader", SF_Compute);
 
-FNoiseComputeShaderDispatchParams FNoiseComputeShaderInterface::BuildParams(FVector3f Position, FVector3f Size, FNoiseSettings NoiseSettings)
+FNoiseComputeShaderDispatchParams FNoiseComputeShaderInterface::BuildParams(FVector3f Position, FVector3f Size, FNoiseSettings NoiseSettings, TEnumAsByte<NoiseMode> NoiseMode,TEnumAsByte<NoiseDensityFunction> DensityFunction)
 {
-	FNoiseComputeShaderDispatchParams Params(Size.X, Size.Y, 1);
+	FNoiseComputeShaderDispatchParams Params(Size.X, Size.Y, Size.Z);
 		
 	Params.Position = Position;
 	Params.Size = Size;
 	Params.Offset = (FVector3f)NoiseSettings.offset;
+	Params.Mode = NoiseMode.GetValue();
 	Params.Octaves = NoiseSettings.octaves;
 	Params.Frequency = NoiseSettings.frequency;
 	Params.Lacunarity = NoiseSettings.lacunarity;
 	Params.Persistence = NoiseSettings.persistence;
 	Params.Scale = NoiseSettings.scale;
 	Params.Filter = NoiseSettings.filter.GetValue();
+	Params.DensityFunction = DensityFunction.GetValue();
 	Params.Type = NoiseSettings.type.GetValue();
 	Params.NormalizeMode = NoiseSettings.normalizeMode.GetValue();
 	Params.DomainWarp = NoiseSettings.domainWarping ? NoiseSettings.domainWarpingScale : 0;
@@ -148,6 +152,7 @@ void FNoiseComputeShaderInterface::DispatchRenderThread(FRHICommandListImmediate
 			PassParameters->Position = Params.Position;
 			PassParameters->Size = Params.Size;
 			PassParameters->Offset = Params.Offset;
+			PassParameters->Mode = Params.Mode;
 			PassParameters->Octaves = Params.Octaves;
 			PassParameters->Frequency = Params.Frequency;
 			PassParameters->Lacunarity = Params.Lacunarity;
@@ -155,14 +160,15 @@ void FNoiseComputeShaderInterface::DispatchRenderThread(FRHICommandListImmediate
 			PassParameters->Scale = Params.Scale;
 			PassParameters->Filter = Params.Filter;
 			PassParameters->Type = Params.Type;
+			PassParameters->DensityFunction = Params.DensityFunction;
 			PassParameters->NormalizeMode = Params.NormalizeMode;
 			PassParameters->DomainWarp = Params.DomainWarp;
 			
-			int NumOutputs = Params.Size.X*Params.Y;
+			int NumOutputs = Params.Size.X*Params.Size.Y*Params.Size.Z;
 			FRDGBufferRef OutputBuffer = GraphBuilder.CreateBuffer(FRDGBufferDesc::CreateBufferDesc(sizeof(float), NumOutputs),TEXT("OutputBuffer"));
 			PassParameters->Output = GraphBuilder.CreateUAV(FRDGBufferUAVDesc(OutputBuffer, PF_R32_FLOAT));
 			
-			auto GroupCount = FComputeShaderUtils::GetGroupCount(FIntVector(Params.X, Params.Y, Params.Z), FComputeShaderUtils::kGolden2DGroupSize);
+			auto GroupCount = FComputeShaderUtils::GetGroupCount(FIntVector(Params.X, Params.Y,Params.Z), FComputeShaderUtils::kGolden2DGroupSize);
 			GraphBuilder.AddPass(RDG_EVENT_NAME("ExecuteNoiseComputeShader"),PassParameters,ERDGPassFlags::AsyncCompute,[&PassParameters, ComputeShader, GroupCount](FRHIComputeCommandList& RHICmdList){
 				FComputeShaderUtils::Dispatch(RHICmdList, ComputeShader, *PassParameters, GroupCount);
 			});
@@ -212,6 +218,7 @@ void FNoiseComputeShaderInterface::DispatchMyComputeShader(FRDGBuilder& GraphBui
 	PassParameters->Position = Params.Position;
 	PassParameters->Size = Params.Size;
 	PassParameters->Offset = Params.Offset;
+	PassParameters->Mode = Params.Mode;
 	PassParameters->Octaves = Params.Octaves;
 	PassParameters->Frequency = Params.Frequency;
 	PassParameters->Lacunarity = Params.Lacunarity;
@@ -219,6 +226,7 @@ void FNoiseComputeShaderInterface::DispatchMyComputeShader(FRDGBuilder& GraphBui
 	PassParameters->Scale = Params.Scale;
 	PassParameters->Filter = Params.Filter;
 	PassParameters->Type = Params.Type;
+	PassParameters->DensityFunction = Params.DensityFunction;
 	PassParameters->NormalizeMode = Params.NormalizeMode;
 	PassParameters->DomainWarp = Params.DomainWarp;
 	PassParameters->Output = GraphBuilder.CreateUAV(FRDGBufferUAVDesc(OutputBuffer, PF_R32_FLOAT));
@@ -237,7 +245,7 @@ void FNoiseComputeShaderInterface::ExecuteMultipleDispatchesAndNotify(FRHIComman
 
     // Create buffers and dispatch compute shaders
     for (int32 i = 0; i < Params.Num(); ++i) {
-        int NumOutputs = Params[i].Size.X * Params[i].Size.Y;
+        int NumOutputs = Params[i].Size.X * Params[i].Size.Y * Params[i].Size.Z;
         FRDGBufferRef OutputBuffer = GraphBuilder.CreateBuffer(FRDGBufferDesc::CreateBufferDesc(sizeof(float), NumOutputs), TEXT("OutputBuffer"));
         OutputBuffers.Add(OutputBuffer);
 
@@ -262,7 +270,7 @@ void FNoiseComputeShaderInterface::ExecuteMultipleDispatchesAndNotify(FRHIComman
         for (int32 i = 0; i < GPUBufferReadbacks.Num(); ++i) {
             FRHIGPUBufferReadback* GPUBufferReadback = GPUBufferReadbacks[i];
             if (GPUBufferReadback->IsReady()) {
-                int NumOutputs = Params[i].Size.X * Params[i].Size.Y;
+                int NumOutputs = Params[i].Size.X * Params[i].Size.Y * Params[i].Size.Z;
                 float* Buffer = (float*)GPUBufferReadback->Lock(NumOutputs);
                 TArray<float> OutputVals;
                 OutputVals.SetNum(NumOutputs);

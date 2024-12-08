@@ -6,6 +6,8 @@ RWBuffer<float> Output;
 float3 Position;
 float3 Size;
 
+int Mode;
+
 float3 Offset;
 int Octaves;
 float Frequency;
@@ -14,6 +16,7 @@ float Persistence;
 float Scale;
 int Filter;
 int Type;
+int DensityFunction;
 int NormalizeMode;
 float DomainWarp;
 
@@ -21,12 +24,31 @@ float DomainWarp;
 [numthreads(THREADS_X, THREADS_Y, THREADS_Z)]
 void NoiseComputeShader(uint3 DispatchThreadId : SV_DispatchThreadID, uint GroupIndex : SV_GroupIndex )
 {
-    if (DispatchThreadId.x >= Size.x || DispatchThreadId.y >= Size.y || DispatchThreadId.z >= 1) return;
-
-    //Sample point
-    float3 mapPos = float3(DispatchThreadId.x,DispatchThreadId.y,DispatchThreadId.z) ;
-	float noise = Noise(DispatchThreadId, Position, Offset,Type,Filter,NormalizeMode,Octaves,Frequency,Lacunarity,Persistence,Scale);
+	if (Mode == 2){
+		if (DispatchThreadId.x >= Size.x || DispatchThreadId.y >= Size.y || DispatchThreadId.z >= Size.z) return;
+		//Sample point
+		uint3 mapPos = uint3(DispatchThreadId.x,DispatchThreadId.y,DispatchThreadId.z) ;
+		float noise = Noise(mapPos, Position, Offset,Type,Filter,NormalizeMode,Octaves,Frequency,Lacunarity,Persistence,Scale);
     
-    //Set Output Buffer
-    Output[mapPos.y * Size.x + mapPos.x] = noise;
+		//Set Output Buffer
+		Output[mapPos.y * Size.x + mapPos.x] = noise;	
+	}
+	if (Mode == 3){
+		uint3 totalGridSize = uint3(Size.x,Size.y,Size.z);
+		uint totalThreads = THREADS_X * THREADS_Y * THREADS_Z;
+		uint flatIndex = DispatchThreadId.x + DispatchThreadId.y * totalGridSize.x + DispatchThreadId.z * totalGridSize.x * totalGridSize.y;
+		for (uint index = flatIndex; index < (totalGridSize.x * totalGridSize.y * totalGridSize.z); index += totalThreads)
+		{
+			//Sample point
+			uint3 coords;
+			coords.z = index / (totalGridSize.x * totalGridSize.y);
+			coords.y = (index / totalGridSize.x) % totalGridSize.y;
+			coords.x = index % totalGridSize.x;
+			float noise = Noise3(coords,Position,Size,Offset,Type,Filter,NormalizeMode,Octaves,Frequency,Lacunarity,Persistence,Scale,DensityFunction);
+
+			//Set Output Buffer
+			// Output[mapPos.x + (mapPos.y * Size.x) + (mapPos.z * Size.x * Size.y)] = noise;
+			Output[index] = noise;
+		}
+	}
 }

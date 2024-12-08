@@ -16,7 +16,8 @@ struct NOISEGENERATOR_API FNoiseComputeShaderDispatchParams
 
 	FVector3f Position;
 	FVector3f Size;
-	
+
+	int Mode;
 	FVector3f Offset;
 	int Octaves;
 	float Frequency;
@@ -25,6 +26,7 @@ struct NOISEGENERATOR_API FNoiseComputeShaderDispatchParams
 	float Scale;
 	int Filter;
 	int Type;
+	int DensityFunction;
 	int NormalizeMode;
 	float DomainWarp;
 
@@ -40,7 +42,7 @@ struct NOISEGENERATOR_API FNoiseComputeShaderDispatchParams
 class NOISEGENERATOR_API FNoiseComputeShaderInterface {
 public:
 
-	static FNoiseComputeShaderDispatchParams BuildParams(FVector3f Position, FVector3f Size, FNoiseSettings NoiseSettings);
+	static FNoiseComputeShaderDispatchParams BuildParams(FVector3f Position, FVector3f Size, FNoiseSettings NoiseSettings, TEnumAsByte<NoiseMode> Mode = D2, TEnumAsByte<NoiseDensityFunction> DensityFunction = NoDensityFunction);
 	
 	// Executes this shader on the render thread
 	static void DispatchRenderThread(
