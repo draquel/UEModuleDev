@@ -149,6 +149,8 @@ struct FNoiseSettings
 
 		domainWarping = false;
 		domainWarpingScale = 1.0f;
+
+		curve = nullptr;
 	}
 
 	bool operator==(const FNoiseSettings& other) const
