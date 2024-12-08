@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Noise.h"
 #include "MeshData/Threads/FQuadTreeMeshDataThread.h"
 #include "MeshData/Threads/FRectMeshDataThread.h"
 #include "MeshDataGenerator.generated.h"
@@ -21,7 +22,7 @@ public:
 
 	static FMeshData RectMesh(FVector position, FVector size, FVector2D segments, float UVScale = 1, FNoiseSettings* NoiseSettings = NULL, int heightMultiplier = 500);
 	static FMeshData QuadTreeMesh(QuadTree* QTree, float UVScale = 1, int depthFilter = 0, FNoiseSettings* NoiseSettings = NULL, int heightMultiplier = 500);
-	static FMeshData MarchingCubes(FVector position, FVector size, float UVScale, FNoiseSettings* NoiseSettings, float isoLevel, bool interpolate);
+	static FMeshData MarchingCubes(FNoiseMap3d NoiseMap, FVector position, FVector size, float UVScale, float isoLevel, bool interpolate, bool renderSides = false);
 
 private:
 	static FVector Interp(FVector edgeVertex1, float valueAtVertex1, FVector edgeVertex2, float valueAtVertex2, float isoLevel);

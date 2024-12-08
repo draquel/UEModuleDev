@@ -1,5 +1,6 @@
 #include "MeshGeneratorExample.h"
 
+#include "Noise.h"
 #include "MeshData/MeshDataGenerator.h"
 
 
@@ -19,16 +20,17 @@ AMeshGeneratorExample::AMeshGeneratorExample()
 void AMeshGeneratorExample::BeginPlay()
 {
 	Super::BeginPlay();
-	
 }
 
 void AMeshGeneratorExample::Generate()
 {
 	Mesh->SetMaterial(0,Material);
-	FMeshData Data = UMeshDataGenerator::MarchingCubes(GetActorLocation(),Size,UVScale,&NoiseSettings,isoLevel,interpolate);
-	Data.CreateProceduralMesh(Mesh);
-	DebugDraw();
-	Data.Reset();
+	UNoise::GenerateMap3D((FIntVector)GetActorLocation(),(FIntVector)(Size), NoiseSettings,Floor,[this](FNoiseMap3d NoiseMap){
+		FMeshData Data = UMeshDataGenerator::MarchingCubes(NoiseMap,GetActorLocation(),Size,UVScale,isoLevel,interpolate,showSides);
+		Data.CreateProceduralMesh(Mesh);
+		DebugDraw();
+		Data.Reset();	
+	});
 }
 
 // Called every frame
@@ -37,10 +39,11 @@ void AMeshGeneratorExample::Tick(float DeltaTime)
 	Super::Tick(DeltaTime);
 }
 
-// void AMeshGeneratorExample::OnConstruction(const FTransform& Transform)
-// {
-// 	Super::OnConstruction(Transform);
-// }
+void AMeshGeneratorExample::OnConstruction(const FTransform& Transform)
+{
+	Super::OnConstruction(Transform);
+	Generate();
+}
 
 void AMeshGeneratorExample::DebugDraw()
 {

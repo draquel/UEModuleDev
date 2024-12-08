@@ -59,6 +59,7 @@ public:
 
 	void CalculateTangents()
 	{
+		RemoveRedundantVertices(Vertices, UV0, Triangles);
 		UKismetProceduralMeshLibrary::CalculateTangentsForMesh(Vertices,Triangles,UV0,Normals,Tangents);
 	}
 
@@ -91,6 +92,7 @@ public:
 		if(collision){ DynamicMeshComponent->UpdateCollision(); }
 	}
 
+	//I think this needs review
 	void ConfigureForNavigation(UProceduralMeshComponent* Component)
 	{
 		Component->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
@@ -140,5 +142,70 @@ public:
 			AveragedNormal.Normalize();
 			Mesh.SetVertexNormal(VertexID, AveragedNormal);
 		}
+	}
+
+	static void RemoveRedundantVertices(TArray<FVector>& Vertices, TArray<FVector2D>& UVs, TArray<int32>& Triangles)
+	{
+		TArray<FVector> UniqueVertices;
+		TArray<FVector2D> UniqueUVs;
+		TMap<FVector, int32> VertexToIndexMap; // Maps a vertex to its new index
+		TArray<int32> RemappedTriangles;
+
+		// Identify unique vertices and UVs
+		for (int32 i = 0; i < Vertices.Num(); ++i)
+		{
+			const FVector& Vertex = Vertices[i];
+			const FVector2D& UV = UVs[i];
+
+			// Check if this vertex is already in the map
+			int32* ExistingIndex = VertexToIndexMap.Find(Vertex);
+			if (ExistingIndex)
+			{
+				// Check if UV matches as well
+				if (UniqueUVs[*ExistingIndex] == UV)
+				{
+					// Exact match, no need to add new vertex
+					continue;
+				}
+				else
+				{
+					// UV conflict: Create a new vertex to preserve UVs
+					int32 NewIndex = UniqueVertices.Add(Vertex);
+					UniqueUVs.Add(UV);
+					VertexToIndexMap.Add(Vertex, NewIndex);
+				}
+			}
+			else
+			{
+				// Add new unique vertex and UV
+				int32 NewIndex = UniqueVertices.Add(Vertex);
+				UniqueUVs.Add(UV);
+				VertexToIndexMap.Add(Vertex, NewIndex);
+			}
+		}
+
+		// Remap triangle indices
+		for (int32 i = 0; i < Triangles.Num(); ++i)
+		{
+			const int32 OldIndex = Triangles[i];
+			const FVector& OldVertex = Vertices[OldIndex];
+
+			// Find the new index for the old vertex
+			const int32* NewIndex = VertexToIndexMap.Find(OldVertex);
+			if (NewIndex)
+			{
+				RemappedTriangles.Add(*NewIndex);
+			}
+			else
+			{
+				// This should not happen if the logic above is correct
+				check(false && "Vertex remapping failed");
+			}
+		}
+
+		// Replace old data with optimized data
+		Vertices = UniqueVertices;
+		UVs = UniqueUVs;
+		Triangles = RemappedTriangles;
 	}
 };

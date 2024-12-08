@@ -30,10 +30,12 @@ public:
 	UPROPERTY(EditAnywhere)
 	bool interpolate = false;
 	UPROPERTY(EditAnywhere)
+	bool showSides = false;
+	UPROPERTY(EditAnywhere)
 	float UVScale = 1.0f;
 
 	UPROPERTY(EditAnywhere)
-	FNoiseSettings NoiseSettings;
+	FNoiseSettings NoiseSettings = FNoiseSettings(D3);
 	
 
 protected:
@@ -47,7 +49,7 @@ public:
 	// Called every frame
 	virtual void Tick(float DeltaTime) override;
 
-	// virtual void OnConstruction(const FTransform& Transform) override;
+	virtual void OnConstruction(const FTransform& Transform) override;
 
 	UFUNCTION(CallInEditor,meta=(Category="MeshGeneratorExample"))
 	void DebugDraw();

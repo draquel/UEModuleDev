@@ -1,5 +1,4 @@
 #include "MeshData/MeshDataGenerator.h"
-
 #include "MeshGenerator.h"
 #include "MeshData/MeshData.h"
 #include "Noise.h"
@@ -131,28 +130,32 @@ FMeshData UMeshDataGenerator::QuadTreeMesh(QuadTree* QTree, float UVScale, int d
 	return MeshData;
 }
 
-FMeshData UMeshDataGenerator::MarchingCubes(FVector position, FVector size, float UVScale, FNoiseSettings* NoiseSettings, float isoLevel, bool interpolate)
+FMeshData UMeshDataGenerator::MarchingCubes(FNoiseMap3d NoiseMap, FVector position, FVector size, float UVScale, float isoLevel, bool interpolate, bool renderSides)
 {
 	double start = FPlatformTime::Seconds();
 	int stepSize = 100;
 	FMeshData MeshData = FMeshData();
 	MeshData.UVScale = UVScale;
 
+	// FNoiseMap3d NoiseMap = UNoise::GenerateMap3D((FIntVector)position, (FIntVector)size+FIntVector(1,1,1), NoiseSettings, NoiseDensityFunction::Floor);
+
 	for (int x = 0; x < size.X-1; x++) {
 		for (int y = 0; y < size.Y-1; y++) {
 			for (int z = 0; z < size.Z-1; z++) {
 				FVector pos = FVector(x,y,z);
-				FVector sample = (position + pos +NoiseSettings->offset) * (-1 * NoiseSettings->scale);
+				FVector sample = (position + pos);
 				
 				TArray<float> cubeValues = TArray<float>();
 				for (int i = 0; i < UMarchingCubes::cornerOffsets.Num(); i++) {
-					FVector cSample = sample + UMarchingCubes::cornerOffsets[i];
-					cubeValues.Add(-cSample.Z + UNoise::Evaluate3D(cSample,NoiseSettings));
+					FIntVector mp =(FIntVector) (pos + UMarchingCubes::cornerOffsets[i]);
+					FIntVector s = (FIntVector)(sample + UMarchingCubes::cornerOffsets[i]);
+					if (renderSides && (mp.X >= size.X-1 || mp.Y >= size.Y-1 || mp.Z >= size.Z-1 || mp.X <= 0 || mp.Y <= 0 || mp.Z <= 0)) { cubeValues.Add(isoLevel); }
+					else{ cubeValues.Add(NoiseMap.Map[s]); }
 				}
 
 				int cubeIndex = 0;
-				for (int i = 0; i < cubeValues.Num(); i++)	{
-					if (cubeValues[i] <= isoLevel) {
+				for (int i = 0; i < cubeValues.Num(); i++){
+					if (cubeValues[i] < isoLevel) {
 						cubeIndex |= 1 << i;
 					}
 				}
@@ -188,14 +191,14 @@ FMeshData UMeshDataGenerator::MarchingCubes(FVector position, FVector size, floa
 		}
 	}
 
-	// MeshData.CalculateTangents();
+	//SUPER EXPENSIVE HERE (and everywhere)--- needs alternatives / optimization???
+	MeshData.CalculateTangents();
 	
 	double end = FPlatformTime::Seconds();
-	UE_LOG(MeshGenerator, Warning, TEXT("MarchingCubes() - V:%d  Runtime: %f"), MeshData.Vertices.Num(), end - start);
+	UE_LOG(MeshGenerator, Log, TEXT("MarchingCubes() - V:%d  Runtime: %f"), MeshData.Vertices.Num(), end - start);
 	
 	return MeshData;
 }
-
 FVector UMeshDataGenerator::Interp(FVector edgeVertex1, float valueAtVertex1, FVector edgeVertex2, float valueAtVertex2, float isoLevel) {
 	return (edgeVertex1 + (isoLevel - valueAtVertex1) * (edgeVertex2 - edgeVertex1) / (valueAtVertex2 - valueAtVertex1));
 }
