@@ -159,7 +159,7 @@ void UNoise::Normalize(FNoiseMap2d* NoiseMap, NoiseNormalizeMode normalizeMode, 
 	if (normalizeMode != NoNormalization){
 		for(int x = 0; x < NoiseMap->Size.X; x++) {
 			for(int y = 0; y < NoiseMap->Size.Y; y++) {
-				FIntVector2 index = FIntVector2(FMath::Floor(NoiseMap->Position.X) + x, FMath::Floor(NoiseMap->Position.Y) + y);
+				FIntVector2 index =	FIntVector2(NoiseMap->Position.X + x, NoiseMap->Position.Y + y);
 				NoiseMap->Map[index] = Normalize(normalizeMode,NoiseMap->Map[index],NoiseMap->MinMax,typeMinMax);
 			}
 		}
@@ -174,7 +174,7 @@ void UNoise::Normalize(FNoiseMap3d* NoiseMap, NoiseNormalizeMode normalizeMode, 
 		for(int x = 0; x < NoiseMap->Size.X; x++) {
 			for(int y = 0; y < NoiseMap->Size.Y; y++) {
 				for(int z = 0; z < NoiseMap->Size.Z; z++) {
-					FIntVector index = FIntVector(FMath::Floor(NoiseMap->Position.X) + x, FMath::Floor(NoiseMap->Position.Y) + y, FMath::Floor(NoiseMap->Position.Z) + z);
+					FIntVector index = FIntVector(NoiseMap->Position.X + x, NoiseMap->Position.Y + y, NoiseMap->Position.Z + z);
 					NoiseMap->Map[index] = Normalize(normalizeMode,NoiseMap->Map[index],NoiseMap->MinMax,typeMinMax);
 				}
 			}
@@ -188,7 +188,7 @@ FNoiseMap2d UNoise::GenerateMap2D(FIntVector pos, FIntVector2 mapSize, FNoiseSet
 	FNoiseMap2d NoiseMap = FNoiseMap2d(pos,mapSize);
 	for(int x = 0; x < mapSize.X; x++) {
 		for(int y = 0; y < mapSize.Y; y++) {
-			FIntVector2 index = FIntVector2(FMath::Floor(pos.X) + x, FMath::Floor(pos.Y) + y);
+			FIntVector2 index = FIntVector2(pos.X + x, pos.Y + y);
 			NoiseMap.Map.Add(index,Evaluate2D(FVector(index.X,index.Y,0),NoiseSettings));
 			NoiseMap.MinMax.Add(NoiseMap.Map[index]);
 		}

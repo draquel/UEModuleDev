@@ -180,8 +180,8 @@ struct FNoiseMap3d
 		for(int x = 0; x < Size.X; x++) {
 			for(int y = 0; y < Size.Y; y++) {
 				for(int z = 0; z < Size.Z; z++)	{
-					FIntVector index = FIntVector(FMath::Floor(Position.X) + x, FMath::Floor(Position.Y) + y, FMath::Floor(Position.Z) + z);
-					Map.Add(index,InMap[y * Size.X + x]);
+					FIntVector index = FIntVector(Position.X + x, Position.Y + y, Position.Z + z);
+					Map.Add(index,InMap[index.X + (index.Y * Size.X) + (index.Z * Size.X * Size.Y)]);
 					MinMax.Add(Map[index]);
 				}
 			}
