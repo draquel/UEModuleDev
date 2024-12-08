@@ -12,6 +12,7 @@ FMeshData UMeshDataGenerator::RectMesh(FVector position, FVector size, FVector2D
 {
 	FMeshData MeshData = FMeshData();
 	MeshData.UVScale = UVScale;
+	double start = FPlatformTime::Seconds();
 	
 	float xStep = size.X / segments.X;
 	float yStep = size.Y / segments.Y; 
@@ -44,7 +45,9 @@ FMeshData UMeshDataGenerator::RectMesh(FVector position, FVector size, FVector2D
 	}
 
 	MeshData.CalculateTangents();
-
+	
+	double end = FPlatformTime::Seconds();
+	UE_LOG(MeshGenerator, Log, TEXT("MeshGenerator::RectMesh() ==> Verts:%d,  Runtime: %f"), MeshData.Vertices.Num(), end - start);
 	return MeshData;
 }
 
@@ -52,6 +55,8 @@ FMeshData UMeshDataGenerator::QuadTreeMesh(QuadTree* QTree, float UVScale, int d
 {
 	FMeshData MeshData = FMeshData();
 	MeshData.UVScale = UVScale;
+	double start = FPlatformTime::Seconds();
+
 	FVector posCorner = QTree->Position + QTree->Size;
 	for (int i = 0; i < QTree->Leaves.Num(); i++) {
 		if(depthFilter != 0 && QTree->Leaves[i].Depth < depthFilter){ continue; }
@@ -127,6 +132,8 @@ FMeshData UMeshDataGenerator::QuadTreeMesh(QuadTree* QTree, float UVScale, int d
 
 	MeshData.CalculateTangents();
 
+	double end = FPlatformTime::Seconds();
+	UE_LOG(MeshGenerator, Log, TEXT("MeshGenerator::QuadTreeMesh() ==> Verts:%d,  Runtime: %f"), MeshData.Vertices.Num(), end - start);
 	return MeshData;
 }
 

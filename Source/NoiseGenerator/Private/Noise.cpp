@@ -251,20 +251,20 @@ void UNoise::GenerateMap2D(FIntVector pos, FIntVector2 mapSize, FNoiseSettings N
 	if(NoiseSettings.source == CPU) {
 		FNoiseMap2d NoiseMap = GenerateMap2D(pos,mapSize,&NoiseSettings);
 		double end = FPlatformTime::Seconds();
-		UE_LOG(NoiseGenerator,Log,TEXT("UNoise::GenerateMap2D() ==> %s-%s, Cycles: %d, RunTime: %fs"),*UEnum::GetValueAsString(NoiseSettings.source),*UEnum::GetValueAsString(NoiseSettings.type),cycles,end-start);
+		UE_LOG(NoiseGenerator,Log,TEXT("UNoise::GenerateMap2D ==> %s-%s, Cycles: %d, RunTime: %fs"),*UEnum::GetValueAsString(NoiseSettings.source),*UEnum::GetValueAsString(NoiseSettings.type),cycles,end-start);
 		Callback(NoiseMap);
 		return;
 	}
 
 	//NoiseSettings.source == GPU
-	FNoiseComputeShaderDispatchParams Params = FNoiseComputeShaderInterface::BuildParams((FVector3f)pos, FVector3f(mapSize.X,mapSize.Y,1.0f), NoiseSettings);
+	FNoiseComputeShaderDispatchParams Params = FNoiseComputeShaderInterface::BuildParams((FVector3f)pos, FVector3f(mapSize.X,mapSize.Y,1.0f), NoiseSettings, D2);
 	FNoiseComputeShaderInterface::Dispatch(Params,[pos,mapSize,NoiseSettings,Callback,cycles,start](TArray<float> OutputVals){
 		FNoiseMap2d NoiseMap = FNoiseMap2d(pos,FIntVector2(mapSize.X,mapSize.Y),OutputVals);
 		if (NoiseSettings.normalizeMode == Local || NoiseSettings.normalizeMode == LocalPositive){
 			Normalize(&NoiseMap,NoiseSettings.normalizeMode,NoiseSettings.type);
 		}
 		double end = FPlatformTime::Seconds();
-		UE_LOG(NoiseGenerator,Log,TEXT("UNoise::GenerateMap2D() ==> %s-%s, Cycles: %d, RunTime: %fs"),*UEnum::GetValueAsString(NoiseSettings.source),*UEnum::GetValueAsString(NoiseSettings.type),cycles,end-start);
+		UE_LOG(NoiseGenerator,Log,TEXT("UNoise::GenerateMap2D ==> %s-%s, Cycles: %d, RunTime: %fs"),*UEnum::GetValueAsString(NoiseSettings.source),*UEnum::GetValueAsString(NoiseSettings.type),cycles,end-start);
 		Callback(NoiseMap);
 	});
 }
@@ -274,7 +274,7 @@ void UNoise::GenerateMap2D(FIntVector pos, FIntVector2 mapSize, TArray<FNoiseSet
 	//Count of NoiseSettings with a positive gain in the array
 	int32 count = Algo::Accumulate(NoiseSettings, 0, [](int32 Total, const FNoiseSettings& Item) { return Total + (Item.gain > 0 ? 1 : 0); });
 	if (count == 0){
-		UE_LOG(NoiseGenerator,Error,TEXT("UNoise::GenerateMap2D() ==> No Settings Defined or Total Gain <= 0"));
+		UE_LOG(NoiseGenerator,Error,TEXT("UNoise::GenerateMap2D ==> No Settings Defined or Total Gain <= 0"));
 		return;
 	}
 	if (count == 1) {
@@ -297,7 +297,7 @@ void UNoise::GenerateMap2D(FIntVector pos, FIntVector2 mapSize, TArray<FNoiseSet
 	for (int i = 0; i < NoiseSettings.Num(); i++){
 		if (NoiseSettings[i].gain <= 0.0f) { continue; }
 		if (NoiseSettings[i].source == GPU){
-			Params.Add(FNoiseComputeShaderInterface::BuildParams((FVector3f)pos, FVector3f(mapSize.X,mapSize.Y,1.0f),NoiseSettings[i]));
+			Params.Add(FNoiseComputeShaderInterface::BuildParams((FVector3f)pos, FVector3f(mapSize.X,mapSize.Y,1.0f),NoiseSettings[i],D2));
 		}
 		if (NoiseSettings[i].source == CPU) {
 			CPUMaps.Add(i,GenerateMap2D(pos,mapSize,&NoiseSettings[i]));
@@ -328,7 +328,7 @@ void UNoise::GenerateMap2D(FIntVector pos, FIntVector2 mapSize, TArray<FNoiseSet
 		FNoiseMap2d NoiseMap = FNoiseMap2d(pos,mapSize);
 		GenerateMap2D(NoiseMap,&ResultData);
 		double end = FPlatformTime::Seconds();
-		UE_LOG(NoiseGenerator,Log,TEXT("UNoise::GenerateMap2D() ==> %s [%d], Cycles: %d, RunTime: %f"),TEXT("Layered"),ResultData.Num(),cycles,end-start);
+		UE_LOG(NoiseGenerator,Log,TEXT("UNoise::GenerateMap2D ==> %s [%d], Cycles: %d, RunTime: %f"),TEXT("Layered"),ResultData.Num(),cycles,end-start);
 		Callback(NoiseMap);
 	});
 }
@@ -410,7 +410,7 @@ void UNoise::GenerateMap3D(FIntVector pos, FIntVector mapSize, FNoiseSettings No
 	if(NoiseSettings.source == CPU) {
 		FNoiseMap3d NoiseMap = GenerateMap3D(pos,mapSize,&NoiseSettings,DensityFunction);
 		double end = FPlatformTime::Seconds();
-		UE_LOG(NoiseGenerator,Log,TEXT("UNoise::GenerateMap2D() ==> %s-%s, Cycles: %d, RunTime: %fs"),*UEnum::GetValueAsString(NoiseSettings.source),*UEnum::GetValueAsString(NoiseSettings.type),cycles,end-start);
+		UE_LOG(NoiseGenerator,Log,TEXT("UNoise::GenerateMap3D ==> %s-%s, Cycles: %d, RunTime: %fs"),*UEnum::GetValueAsString(NoiseSettings.source),*UEnum::GetValueAsString(NoiseSettings.type),cycles,end-start);
 		Callback(NoiseMap);
 		return;
 	}
@@ -424,7 +424,7 @@ void UNoise::GenerateMap3D(FIntVector pos, FIntVector mapSize, FNoiseSettings No
 			Normalize(&NoiseMap,NoiseSettings.normalizeMode,NoiseSettings.type);
 		}
 		double end = FPlatformTime::Seconds();
-		UE_LOG(NoiseGenerator,Log,TEXT("UNoise::GenerateMap2D() ==> %s-%s, Cycles: %d, RunTime: %fs"),*UEnum::GetValueAsString(NoiseSettings.source),*UEnum::GetValueAsString(NoiseSettings.type),cycles,end-start);
+		UE_LOG(NoiseGenerator,Log,TEXT("UNoise::GenerateMap3D ==> %s-%s, Cycles: %d, RunTime: %fs"),*UEnum::GetValueAsString(NoiseSettings.source),*UEnum::GetValueAsString(NoiseSettings.type),cycles,end-start);
 		Callback(NoiseMap);
 	});
 }

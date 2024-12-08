@@ -2,6 +2,7 @@
 
 #include "ProceduralMeshComponent.h"
 #include "KismetProceduralMeshLibrary.h"
+#include "MeshGenerator.h"
 #include "AI/NavigationSystemBase.h"
 #include "Components/DynamicMeshComponent.h"
 #include "DynamicMesh/MeshAttributeUtil.h"
@@ -65,8 +66,13 @@ public:
 
 	void CreateProceduralMesh(UProceduralMeshComponent* ProceduralMeshComponent, int section = 0, bool collision = true) const
 	{
+		double start = FPlatformTime::Seconds();
+		
 		ProceduralMeshComponent->ClearMeshSection(section);
 		ProceduralMeshComponent->CreateMeshSection(section,Vertices,Triangles,Normals,UV0,TArray<FColor>(),Tangents,collision);
+		
+		double end = FPlatformTime::Seconds();
+		UE_LOG(MeshGenerator, Verbose, TEXT("MeshData::CreateProceduralMesh() => Runtime: %fs "), (end - start));
 	}
 
 	void CreateDynamicMesh(UDynamicMeshComponent* DynamicMeshComponent, bool collision = true) const
