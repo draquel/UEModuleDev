@@ -1,5 +1,6 @@
 #pragma once
 
+#include "NoiseGenerator.h"
 #include "NoiseSettings.h"
 #include "Noise.generated.h"
 
