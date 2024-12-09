@@ -24,6 +24,7 @@ struct NOISEGENERATOR_API FNoiseComputeShaderDispatchParams
 	float Lacunarity;
 	float Persistence;	
 	float Scale;
+	int StepSize;
 	int Filter;
 	int Type;
 	int DensityFunction;
@@ -42,7 +43,7 @@ struct NOISEGENERATOR_API FNoiseComputeShaderDispatchParams
 class NOISEGENERATOR_API FNoiseComputeShaderInterface {
 public:
 
-	static FNoiseComputeShaderDispatchParams BuildParams(FVector3f Position, FVector3f Size, FNoiseSettings NoiseSettings, TEnumAsByte<NoiseMode> Mode = D2, TEnumAsByte<NoiseDensityFunction> DensityFunction = NoDensityFunction);
+	static FNoiseComputeShaderDispatchParams BuildParams(FVector3f Position, FVector3f Size, FNoiseSettings NoiseSettings, TEnumAsByte<NoiseMode> Mode = D2, TEnumAsByte<NoiseDensityFunction> DensityFunction = NoDensityFunction, int StepSize = 1);
 	
 	// Executes this shader on the render thread
 	static void DispatchRenderThread(

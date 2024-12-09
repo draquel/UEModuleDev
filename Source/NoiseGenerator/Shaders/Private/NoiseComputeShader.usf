@@ -14,6 +14,7 @@ float Frequency;
 float Lacunarity;
 float Persistence;
 float Scale;
+int StepSize;
 int Filter;
 int Type;
 int DensityFunction;
@@ -39,12 +40,17 @@ void NoiseComputeShader(uint3 DispatchThreadId : SV_DispatchThreadID, uint Group
 		uint flatIndex = DispatchThreadId.x + DispatchThreadId.y * totalGridSize.x + DispatchThreadId.z * totalGridSize.x * totalGridSize.y;
 		for (uint index = flatIndex; index < (totalGridSize.x * totalGridSize.y * totalGridSize.z); index += totalThreads)
 		{
-			//Sample point
+			// //Sample point
 			uint3 coords;
 			coords.z = index / (totalGridSize.x * totalGridSize.y);
 			coords.y = (index / totalGridSize.x) % totalGridSize.y;
 			coords.x = index % totalGridSize.x;
-			float noise = Noise3(coords,Position,Size,Offset,Type,Filter,NormalizeMode,Octaves,Frequency,Lacunarity,Persistence,Scale,DensityFunction);
+
+			float3 worldCoords;
+			worldCoords.x = coords.x * StepSize;
+			worldCoords.y = coords.y * StepSize;
+			worldCoords.z = coords.z * StepSize;
+			float noise = Noise3(worldCoords,Position,Size,Offset,Type,Filter,NormalizeMode,Octaves,Frequency,Lacunarity,Persistence,Scale,DensityFunction);
 
 			//Set Output Buffer
 			Output[index] = noise;

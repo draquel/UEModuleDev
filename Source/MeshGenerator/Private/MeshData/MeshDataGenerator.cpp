@@ -149,20 +149,23 @@ FMeshData UMeshDataGenerator::MarchingCubes(FNoiseMap3d NoiseMap, FVector positi
 		return MeshData;
 	}
 
-    for (int x = 0; x < size.X - 1; x += stepSize) {
-        for (int y = 0; y < size.Y - 1; y += stepSize) {
-            for (int z = 0; z < size.Z - 1; z += stepSize) {
+    for (int x = 0; x < size.X; x += stepSize) {
+        for (int y = 0; y < size.Y; y += stepSize) {
+            for (int z = 0; z < size.Z; z += stepSize) {
                 FVector pos = FVector(x, y, z);
-                FVector sample = position + pos;
 
                 TArray<float> cubeValues;
                 for (int i = 0; i < UMarchingCubes::cornerOffsets.Num(); i++) {
                 	FIntVector mp =(FIntVector) (pos + UMarchingCubes::cornerOffsets[i]*stepSize);
-                	FIntVector s = (FIntVector)(sample + UMarchingCubes::cornerOffsets[i]*stepSize);
-                    if (renderSides && (mp.X >= size.X - 1 || mp.Y >= size.Y - 1 || mp.Z >= size.Z - 1 || mp.X <= 0 || mp.Y <= 0 || mp.Z <= 0)) {
+                	FIntVector s = (FIntVector)position+(FIntVector)(pos + UMarchingCubes::cornerOffsets[i]*stepSize);
+                    if (renderSides && (mp.X >= size.X || mp.Y >= size.Y || mp.Z >= size.Z || mp.X <= 0 || mp.Y <= 0 || mp.Z <= 0)) {
                         cubeValues.Add(isoLevel);
                     } else {
-                        cubeValues.Add(NoiseMap.Map[s]);
+                    	if (!NoiseMap.Map.Contains(s)) {
+                    		UE_LOG(MeshGenerator,Error,TEXT("MeshGenerator::MarchingCubes => invalid map index %s"),*s.ToString());
+                    	}else{
+							cubeValues.Add(NoiseMap.Map[s]);
+                    	}
                     }
                 }
 

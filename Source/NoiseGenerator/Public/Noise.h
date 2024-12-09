@@ -151,6 +151,9 @@ struct FNoiseMap3d
 	FIntVector Size;
 
 	UPROPERTY()
+	int StepSize;
+
+	UPROPERTY()
 	FMinMax MinMax;
 	
 	// Default constructor
@@ -159,40 +162,46 @@ struct FNoiseMap3d
 		Map.Empty();
 		MinMax = FMinMax();
 		Size = FIntVector(64, 64,64);
+		StepSize = 1;
 		Position = FIntVector();
 	}
 
-	FNoiseMap3d(FIntVector InPosition, FIntVector InSize)
+	FNoiseMap3d(FIntVector InPosition, FIntVector InSize,int InStepSize = 1)
 	{
 		Map.Empty();
 		MinMax = FMinMax();
 		Size = InSize;
+		StepSize = InStepSize;
 		Position = InPosition;
 	}
 
-	FNoiseMap3d(FIntVector InPosition, FIntVector InSize, TArray<float> InMap)
+	FNoiseMap3d(FIntVector InPosition, FIntVector InSize,int InStepSize,TArray<float> InMap)
 	{
 		Map.Empty();
 		MinMax = FMinMax();
 		Size = InSize;
+		StepSize = InStepSize;
 		Position = InPosition;
+		FIntVector scaledSize = InSize / InStepSize;
 		
-		for(int x = 0; x < Size.X; x++) {
-			for(int y = 0; y < Size.Y; y++) {
-				for(int z = 0; z < Size.Z; z++)	{
-					FIntVector index = FIntVector(Position.X + x, Position.Y + y, Position.Z + z);
-					Map.Add(index,InMap[index.X + (index.Y * Size.X) + (index.Z * Size.X * Size.Y)]);
+		for(int x = 0; x < scaledSize.X; x++) {
+			for(int y = 0; y < scaledSize.Y; y++) {
+				for(int z = 0; z < scaledSize.Z; z++)	{
+					FIntVector mp = FIntVector(x, y, z);
+					FIntVector index = Position + mp * StepSize;
+					Map.Add(index,InMap[mp.X + (mp.Y * scaledSize.X) + (mp.Z * scaledSize.X * scaledSize.Y)]);
 					MinMax.Add(Map[index]);
 				}
 			}
 		}
 	}
 
-	FNoiseMap3d(TMap<FIntVector3, float> InMap, FIntVector InPosition, FIntVector3 InSize, FMinMax InMinMax)
+	FNoiseMap3d(TMap<FIntVector3, float> InMap, FIntVector InPosition, FIntVector3 InSize, int InStepSize, FMinMax InMinMax)
 	{
 		Map = InMap;
 		Position = InPosition;
 		Size = InSize;
+		StepSize = InStepSize;
 		MinMax = InMinMax;
 	}
 
@@ -251,8 +260,10 @@ public:
 	static UTexture2D* GenerateTexture(FIntVector pos, FIntVector2 mapSize, TArray<FNoiseSettings>* NoiseSettings, UCurveLinearColor* ColorCurve = nullptr);
 	static UTexture2D* GenerateTexture(FNoiseMap2d* NoiseMap, UCurveLinearColor* ColorCurve = nullptr);
 
-	static FNoiseMap3d GenerateMap3D(FIntVector pos, FIntVector mapSize, FNoiseSettings* NoiseSettings, NoiseDensityFunction DensityFunction = NoDensityFunction);
-	static void GenerateMap3D(FIntVector pos, FIntVector mapSize, FNoiseSettings NoiseSettings, NoiseDensityFunction DensityFunction, TFunction<void(FNoiseMap3d NoiseMap)> Callback);
+	static FNoiseMap3d GenerateMap3D(FIntVector pos, FIntVector mapSize, int stepSize, FNoiseSettings* NoiseSettings, NoiseDensityFunction DensityFunction =
+		                                 NoDensityFunction);
+	static void GenerateMap3D(FIntVector pos, FIntVector mapSize, int stepSize, FNoiseSettings NoiseSettings, NoiseDensityFunction DensityFunction, TFunction
+	                          <void(FNoiseMap3d NoiseMap)> Callback);
 
 	static FVector2D PoissonSample(const FVector2D& center, float minRadius, float maxRadius);
 	static TArray<FVector2D> PoissonDiscSample(const FVector2D& topLeft, const FVector2D& bottomRight, float minDist, int newPointsCount);

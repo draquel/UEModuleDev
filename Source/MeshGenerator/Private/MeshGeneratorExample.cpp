@@ -26,8 +26,8 @@ void AMeshGeneratorExample::BeginPlay()
 void AMeshGeneratorExample::Generate()
 {
 	Mesh->SetMaterial(0,Material);
-	UNoise::GenerateMap3D((FIntVector)GetActorLocation(),(FIntVector)(Size+StepSize), NoiseSettings,Floor,[this](FNoiseMap3d NoiseMap){
-		FMeshData Data = UMeshDataGenerator::MarchingCubes(NoiseMap,GetActorLocation(),Size,StepSize,UVScale,isoLevel,interpolate, showSides);
+	UNoise::GenerateMap3D((FIntVector)GetActorLocation(),(FIntVector)(Size+StepSize),StepSize,NoiseSettings,Floor,[this](FNoiseMap3d NoiseMap){
+		FMeshData Data = UMeshDataGenerator::MarchingCubes(NoiseMap,GetActorLocation(),Size,StepSize,UVScale,isoLevel,interpolate,showSides);
 		Data.CreateProceduralMesh(Mesh);
 		DebugDraw();
 		Data.Reset();	

@@ -62,6 +62,7 @@ public:
 		SHADER_PARAMETER(float, Lacunarity)
 		SHADER_PARAMETER(float, Persistence)
 		SHADER_PARAMETER(float, Scale)
+		SHADER_PARAMETER(int, StepSize)
 		SHADER_PARAMETER(int, Filter)
 		SHADER_PARAMETER(int, Type)
 		SHADER_PARAMETER(int, DensityFunction)
@@ -109,7 +110,7 @@ private:
 //                            ShaderType                            ShaderPath                     Shader function name    Type
 IMPLEMENT_GLOBAL_SHADER(FNoiseComputeShader, "/NoiseShaders/NoiseComputeShader.usf", "NoiseComputeShader", SF_Compute);
 
-FNoiseComputeShaderDispatchParams FNoiseComputeShaderInterface::BuildParams(FVector3f Position, FVector3f Size, FNoiseSettings NoiseSettings, TEnumAsByte<NoiseMode> NoiseMode,TEnumAsByte<NoiseDensityFunction> DensityFunction)
+FNoiseComputeShaderDispatchParams FNoiseComputeShaderInterface::BuildParams(FVector3f Position, FVector3f Size, FNoiseSettings NoiseSettings, TEnumAsByte<NoiseMode> NoiseMode,TEnumAsByte<NoiseDensityFunction> DensityFunction, int StepSize)
 {
 	FNoiseComputeShaderDispatchParams Params(Size.X, Size.Y, Size.Z);
 		
@@ -122,6 +123,7 @@ FNoiseComputeShaderDispatchParams FNoiseComputeShaderInterface::BuildParams(FVec
 	Params.Lacunarity = NoiseSettings.lacunarity;
 	Params.Persistence = NoiseSettings.persistence;
 	Params.Scale = NoiseSettings.scale;
+	Params.StepSize = StepSize;
 	Params.Filter = NoiseSettings.filter.GetValue();
 	Params.DensityFunction = DensityFunction.GetValue();
 	Params.Type = NoiseSettings.type.GetValue();
@@ -158,6 +160,7 @@ void FNoiseComputeShaderInterface::DispatchRenderThread(FRHICommandListImmediate
 			PassParameters->Lacunarity = Params.Lacunarity;
 			PassParameters->Persistence = Params.Persistence;
 			PassParameters->Scale = Params.Scale;
+			PassParameters->StepSize = Params.StepSize;
 			PassParameters->Filter = Params.Filter;
 			PassParameters->Type = Params.Type;
 			PassParameters->DensityFunction = Params.DensityFunction;
@@ -224,6 +227,7 @@ void FNoiseComputeShaderInterface::DispatchMyComputeShader(FRDGBuilder& GraphBui
 	PassParameters->Lacunarity = Params.Lacunarity;
 	PassParameters->Persistence = Params.Persistence;
 	PassParameters->Scale = Params.Scale;
+	PassParameters->StepSize = Params.StepSize;
 	PassParameters->Filter = Params.Filter;
 	PassParameters->Type = Params.Type;
 	PassParameters->DensityFunction = Params.DensityFunction;
