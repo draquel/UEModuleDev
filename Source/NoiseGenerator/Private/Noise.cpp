@@ -157,11 +157,11 @@ void UNoise::Normalize(FNoiseMap2d* NoiseMap, NoiseNormalizeMode normalizeMode, 
 	FMinMax typeMinMax = GetTypeMinMax(noiseType);
 
 	if (normalizeMode != NoNormalization){
-		for(int x = 0; x < NoiseMap->Size.X; x++) {
-			for(int y = 0; y < NoiseMap->Size.Y; y++) {
-				FIntVector2 index =	FIntVector2(NoiseMap->Position.X + x, NoiseMap->Position.Y + y);
-				NoiseMap->Map[index] = Normalize(normalizeMode,NoiseMap->Map[index],NoiseMap->MinMax,typeMinMax);
-			}
+		TArray<FIntVector2> indicies;
+		NoiseMap->Map.GetKeys(indicies);
+		for (int i = 0; i < indicies.Num(); i++) {
+			FIntVector2 index = indicies[i];
+			NoiseMap->Map[index] = Normalize(normalizeMode,NoiseMap->Map[index],NoiseMap->MinMax,typeMinMax);	
 		}
 	}
 }
@@ -171,13 +171,11 @@ void UNoise::Normalize(FNoiseMap3d* NoiseMap, NoiseNormalizeMode normalizeMode, 
 	FMinMax typeMinMax = GetTypeMinMax(noiseType);	
 	
 	if (normalizeMode != NoNormalization){
-		for(int x = 0; x < NoiseMap->Size.X; x++) {
-			for(int y = 0; y < NoiseMap->Size.Y; y++) {
-				for(int z = 0; z < NoiseMap->Size.Z; z++) {
-					FIntVector index = FIntVector(NoiseMap->Position.X + x, NoiseMap->Position.Y + y, NoiseMap->Position.Z + z);
-					NoiseMap->Map[index] = Normalize(normalizeMode,NoiseMap->Map[index],NoiseMap->MinMax,typeMinMax);
-				}
-			}
+		TArray<FIntVector> indicies;
+		NoiseMap->Map.GetKeys(indicies);
+		for (int i = 0; i < indicies.Num(); i++) {
+			FIntVector index = indicies[i];
+			NoiseMap->Map[index] = Normalize(normalizeMode,NoiseMap->Map[index],NoiseMap->MinMax,typeMinMax);	
 		}
 	}
 }
