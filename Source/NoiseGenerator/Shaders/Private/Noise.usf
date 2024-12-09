@@ -25,60 +25,12 @@ float FilterRigid(float noise)
 	return v * v * 2 - 1; 
 }
 
-// float Noise(uint3 DispatchThreadId, float3 Position, float4 SettingsA, float4 SettingsB, float4 SettingsC, float4 SettingsD){
-// 	float3 mapPos = float3(DispatchThreadId.x,DispatchThreadId.y,DispatchThreadId.z) ;
-// 	float x = (Position.x + mapPos.x + SettingsA.x) * (1.0f/SettingsB.x);
-// 	float y = (Position.y + mapPos.y + SettingsA.y) * (1.0f/SettingsB.x);
-// 	float2 sample = float2(x,y);
-// 	float noise = 0.0f;
-//     
-// 	//Generate Noise - Warp
-// 	float min = -1.0f;
-// 	float max = 1.0f;
-// 	int type = (int) SettingsD.y;
-// 	if (type == 1){
-// 		//Perlin
-// 		noise = ClassicFBM(sample, SettingsC.x, SettingsC.y, SettingsC.z, SettingsC.w);
-// 		if (SettingsB.z > 0.0f){ noise = ClassicDomainWarping(sample,SettingsB.z, SettingsC.x, SettingsC.y, SettingsC.z, SettingsC.w); }
-// 		min = -0.36f;
-// 		max = 0.375f;
-// 	}	
-// 	if (type == 2){ //Simplex
-// 		noise = snoiseFBM(float2(x,y), SettingsC.x, SettingsC.y, SettingsC.z, SettingsC.w);
-// 		if (SettingsB.z > 0.0f){ noise = snoiseDomainWarping(sample,SettingsB.z, SettingsC.x, SettingsC.y, SettingsC.z, SettingsC.w); }
-// 		min = -0.625f;
-// 		max = 0.525f; 
-// 	}
-//
-// 	//Mutations - Filters / Normalization
-// 	switch ((int)SettingsD.x){
-// 	case 1: // Rigid 
-// 		noise = FilterRigid(noise);
-// 		break;
-// 	default: //None
-// 		break;
-// 	}
-//     
-// 	switch ((int)SettingsD.z) {
-// 	case 3://Global
-// 		noise = (1-(-1))/(max-min)*(noise-min)+(-1);
-// 		break;
-// 	case 4: //GlobalPositive
-// 		noise = (noise - (min)) / (max - (min));
-// 		break;
-// 	default:
-// 		break;
-// 	}
-// 	return noise;
-// }
-
 float Noise(uint3 Coord, float3 Position, float3 Offset, int Type, int Filter, int NormalizeMode, int Octaves, float Frequency, float Lacunarity, float Persistence, float Scale){
 	float3 mapPos = float3(Coord.x,Coord.y,Coord.z) ;
 	float x = (Position.x + mapPos.x + Offset.x) * (1.0f/Scale);
 	float y = (Position.y + mapPos.y + Offset.y) * (1.0f/Scale);
 	float2 sample = float2(x,y);
 	float noise = 0.0f;
-
 
 	//Generate Noise - Warp
 	float min = -1.0f;

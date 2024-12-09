@@ -26,6 +26,9 @@ public:
 	FIntVector2 TextureSize = FIntVector2(256,256);
 
 	UPROPERTY(EditAnywhere)
+	int StepSize = 1;
+
+	UPROPERTY(EditAnywhere)
 	FIntVector Position;
 
 	UPROPERTY(EditAnywhere)

@@ -56,6 +56,9 @@ struct FNoiseMap2d
 	FIntVector2 Size;
 
 	UPROPERTY()
+	int StepSize;
+
+	UPROPERTY()
 	FMinMax MinMax;
 	
 	// Default constructor
@@ -64,38 +67,50 @@ struct FNoiseMap2d
 		Map.Empty();
 		MinMax = FMinMax();
 		Size = FIntVector2(64, 64);
+		StepSize = 1;
 		Position = FIntVector();
 	}
 
-	FNoiseMap2d(FIntVector InPosition, FIntVector2 InSize)
+	FNoiseMap2d(FIntVector InPosition, FIntVector2 InSize, int InStepSize)
 	{
 		Map.Empty();
 		MinMax = FMinMax();
 		Size = InSize;
+		StepSize = InStepSize;
 		Position = InPosition;
 	}
 
-	FNoiseMap2d(FIntVector InPosition, FIntVector2 InSize, TArray<float> InMap)
+	FNoiseMap2d(FIntVector InPosition, FIntVector2 InSize, int InStepSize, TArray<float> InMap)
 	{
 		Map.Empty();
 		MinMax = FMinMax();
 		Size = InSize;
+		StepSize = InStepSize;
 		Position = InPosition;
+		FIntVector2 scaledSize = InSize / InStepSize;
+
+		UE_LOG(NoiseGenerator,Log,TEXT("FNoiseMap2d => scaledSize:%s, inMapSize:%d"),*scaledSize.ToString(),InMap.Num());
 		
-		for(int x = 0; x < Size.X; x++) {
-			for(int y = 0; y < Size.Y; y++) {
-				FIntVector2 index = FIntVector2(FMath::Floor(Position.X) + x, FMath::Floor(Position.Y) + y);
-				Map.Add(index,InMap[y * Size.X + x]);
+		for(int x = 0; x < scaledSize.X; x++) {
+			for(int y = 0; y < scaledSize.Y; y++) {
+				FIntVector2 mp = FIntVector2(x, y);
+				FIntVector2 index = FIntVector2(Position.X, Position.Y) + mp * StepSize;
+				// if (!Map.Contains(index)) {
+				// 	UE_LOG(LogTemp,Warning,TEXT("FNoiseMap2d => invalid index:%s"),*index.ToString());
+				// 	continue;
+				// }
+				Map.Add(index,InMap[y * scaledSize.X + x]);
 				MinMax.Add(Map[index]);
 			}
 		}
 	}
 
-	FNoiseMap2d(TMap<FIntVector2, float> InMap, FIntVector InPosition, FIntVector2 InSize, FMinMax InMinMax)
+	FNoiseMap2d(TMap<FIntVector2, float> InMap, FIntVector InPosition, FIntVector2 InSize, int InStepSize, FMinMax InMinMax)
 	{
 		Map = InMap;
 		Position = InPosition;
 		Size = InSize;
+		StepSize = InStepSize;
 		MinMax = InMinMax;
 	}
 
@@ -247,13 +262,15 @@ public:
 	static void Normalize(FNoiseMap3d* NoiseMap, NoiseNormalizeMode normalizeMode, NoiseType noiseType);
 
 	//CPU 2D Maps
-	static FNoiseMap2d GenerateMap2D(FIntVector pos, FIntVector2 mapSize, FNoiseSettings* NoiseSettings);
-	static FNoiseMap2d GenerateMap2D(FIntVector pos, FIntVector2 mapSize, TArray<FNoiseSettings>* NoiseSettings);
+	static FNoiseMap2d GenerateMap2D(FIntVector pos, FIntVector2 mapSize, int stepSize, FNoiseSettings* NoiseSettings);
+	static FNoiseMap2d GenerateMap2D(FIntVector pos, FIntVector2 mapSize, int stepSize, TArray<FNoiseSettings>* NoiseSettings);
 	static void GenerateMap2D(FNoiseMap2d& NoiseMap,TArray<FNoiseLayerData>* layerData);
 
 	//Needs unique Name -- Accessors for CPU & GPU Generation, with callback to handle Async uniformily.
-	static void GenerateMap2D(FIntVector pos, FIntVector2 mapSize, FNoiseSettings NoiseSettings, TFunction<void(FNoiseMap2d NoiseMap)> Callback);
-	static void GenerateMap2D(FIntVector pos, FIntVector2 mapSize,  TArray<FNoiseSettings> NoiseSettings, TFunction<void(FNoiseMap2d NoiseMap)> Callback);
+	static void GenerateMap2D(FIntVector pos, FIntVector2 mapSize, int stepSize, FNoiseSettings NoiseSettings, TFunction<void(FNoiseMap2d NoiseMap)>
+	                          Callback);
+	static void GenerateMap2D(FIntVector pos, FIntVector2 mapSize, int stepSize, TArray<FNoiseSettings> NoiseSettings, TFunction<void(FNoiseMap2d
+		                          NoiseMap)> Callback);
 	
 	//2D TEXTURE Generators
 	static UTexture2D* GenerateTexture(FIntVector pos, FIntVector2 mapSize, FNoiseSettings* NoiseSettings, UCurveLinearColor* ColorCurve = nullptr);

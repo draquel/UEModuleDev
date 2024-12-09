@@ -17,7 +17,7 @@ void ANoiseExample::Regenerate()
 		UE_LOG(NoiseGenerator, Error, TEXT("No NoiseSettings defined"));
 		return;
 	}
-	UNoise::GenerateMap2D(Position,TextureSize,NoiseSettings,[this](FNoiseMap2d NoiseMap) {
+	UNoise::GenerateMap2D(Position,TextureSize,StepSize,NoiseSettings, [this](FNoiseMap2d NoiseMap) {
 		SetTexture(UNoise::GenerateTexture(&NoiseMap,ColorCurve));	
 	});
 }
