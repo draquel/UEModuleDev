@@ -26,9 +26,9 @@ float FilterRigid(float noise)
 }
 
 float Noise(uint3 Coord, float3 Position, float3 Offset, int Type, int Filter, int NormalizeMode, int Octaves, float Frequency, float Lacunarity, float Persistence, float Scale){
-	float3 mapPos = float3(Coord.x,Coord.y,Coord.z) ;
-	float x = (Position.x + mapPos.x + Offset.x) * (1.0f/Scale);
-	float y = (Position.y + mapPos.y + Offset.y) * (1.0f/Scale);
+	float2 mapPos = float2(Position.x + Coord.x, Position.y + Coord.y);
+	float x = ( mapPos.x + Offset.x) * (1.0f/Scale);
+	float y = ( mapPos.y + Offset.y) * (1.0f/Scale);
 	float2 sample = float2(x,y);
 	float noise = 0.0f;
 

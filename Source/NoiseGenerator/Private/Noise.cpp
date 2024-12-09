@@ -4,7 +4,6 @@
 #include "NoiseSettings.h"
 #include "Poisson.h"
 #include "Curves/CurveLinearColor.h"
-#include "DSP/Chorus.h"
 #include "NoiseGenerator/Public/NoiseComputeShader/NoiseComputeShader.h"
 
 FastNoiseLite UNoise::SetupFastNoise(FNoiseSettings* settings)

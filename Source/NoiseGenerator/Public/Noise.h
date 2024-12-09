@@ -90,16 +90,10 @@ struct FNoiseMap2d
 		Position = InPosition;
 		FIntVector2 scaledSize = InSize / InStepSize;
 
-		UE_LOG(NoiseGenerator,Log,TEXT("FNoiseMap2d => scaledSize:%s, inMapSize:%d"),*scaledSize.ToString(),InMap.Num());
-		
 		for(int x = 0; x < scaledSize.X; x++) {
 			for(int y = 0; y < scaledSize.Y; y++) {
 				FIntVector2 mp = FIntVector2(x, y);
 				FIntVector2 index = FIntVector2(Position.X, Position.Y) + mp * StepSize;
-				// if (!Map.Contains(index)) {
-				// 	UE_LOG(LogTemp,Warning,TEXT("FNoiseMap2d => invalid index:%s"),*index.ToString());
-				// 	continue;
-				// }
 				Map.Add(index,InMap[y * scaledSize.X + x]);
 				MinMax.Add(Map[index]);
 			}

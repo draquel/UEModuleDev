@@ -29,7 +29,7 @@ void NoiseComputeShader(uint3 DispatchThreadId : SV_DispatchThreadID, uint Group
 		if (DispatchThreadId.x >= Size.x || DispatchThreadId.y >= Size.y || DispatchThreadId.z >= 1) return;
 		
 		//Sample point
-		uint3 mapPos = uint3(DispatchThreadId.x,DispatchThreadId.y,1);
+		uint3 mapPos = uint3(DispatchThreadId.x,DispatchThreadId.y,0);
 		float noise = Noise(mapPos*StepSize, Position, Offset,Type,Filter,NormalizeMode,Octaves,Frequency,Lacunarity,Persistence,Scale);
     
 		//Set Output Buffer
