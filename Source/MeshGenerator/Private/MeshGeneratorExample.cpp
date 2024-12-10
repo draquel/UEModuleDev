@@ -1,7 +1,9 @@
 #include "MeshGeneratorExample.h"
 
+#include "LevelEditorViewport.h"
 #include "MeshGenerator.h"
 #include "Noise.h"
+#include "QuadTree/QuadTree.h"
 #include "MeshData/MeshDataGenerator.h"
 
 
@@ -26,12 +28,27 @@ void AMeshGeneratorExample::BeginPlay()
 void AMeshGeneratorExample::Generate()
 {
 	Mesh->SetMaterial(0,Material);
-	UNoise::GenerateMap3D((FIntVector)GetActorLocation(),(FIntVector)(Size+StepSize),StepSize,NoiseSettings,Floor,[this](FNoiseMap3d NoiseMap){
-		FMeshData Data = UMeshDataGenerator::MarchingCubes(NoiseMap,GetActorLocation(),Size,StepSize,UVScale,isoLevel,interpolate,showSides);
-		Data.CreateProceduralMesh(Mesh);
-		DebugDraw();
-		Data.Reset();	
-	});
+	switch (Mode) {
+		default:
+		case 0:
+			UNoise::GenerateMap2D((FIntVector)GetActorLocation(),FIntVector2(Size.X+StepSize,Size.Y+StepSize),StepSize,NoiseSettings2D,[this](FNoiseMap2d NoiseMap)	{
+				QuadTree QuadTree = QuadTree::QuadTree(GetActorLocation(),Size,QuadTreeSettings);
+				QuadTree.GenerateTree(GetPlayerPos());
+				FMeshData Data = UMeshDataGenerator::QuadTreeMesh(&QuadTree,&NoiseMap,UVScale,0,(int)FMath::FloorToInt(Size.Z));
+				Data.CreateProceduralMesh(Mesh);
+				DebugDraw();
+				Data.Reset();	
+			});	
+			break;
+		case 1:
+			UNoise::GenerateMap3D((FIntVector)GetActorLocation(),(FIntVector)(Size+StepSize),StepSize,NoiseSettings3D,Floor,[this](FNoiseMap3d NoiseMap){
+				FMeshData Data = UMeshDataGenerator::MarchingCubes(NoiseMap,GetActorLocation(),Size,StepSize,UVScale,isoLevel,interpolate,showSides);
+				Data.CreateProceduralMesh(Mesh);
+				DebugDraw();
+				Data.Reset();	
+			});
+			break;
+	}
 }
 
 // Called every frame
@@ -79,4 +96,16 @@ void AMeshGeneratorExample::Clear()
 {
 	Mesh->ClearMeshSection(0);
 	FlushPersistentDebugLines(GetWorld());
+}
+
+FVector AMeshGeneratorExample::GetPlayerPos() const
+{
+	if(GetWorld()->IsGameWorld()) {
+		return GetWorld()->GetFirstPlayerController()->GetPawn()->GetActorLocation();
+	}
+	if(GCurrentLevelEditingViewportClient) {
+		FViewportCameraTransform ViewTransform = GCurrentLevelEditingViewportClient->GetViewTransform();
+		return ViewTransform.GetLocation();
+	}
+	return FVector();
 }

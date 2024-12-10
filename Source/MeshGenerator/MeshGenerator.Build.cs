@@ -9,7 +9,7 @@ public class MeshGenerator : ModuleRules
         PublicDependencyModuleNames.AddRange(
             new string[]
             {
-                "Core", "NoiseGenerator", "ToolsLib", "ProceduralMeshComponent", "GeometryCore", "GeometryFramework", "DynamicMesh"
+                "Core", "UnrealEd", "NoiseGenerator", "ToolsLib", "ProceduralMeshComponent", "GeometryCore", "GeometryFramework", "DynamicMesh"
             }
         );
 

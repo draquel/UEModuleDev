@@ -6,7 +6,15 @@
 #include "NoiseSettings.h"
 #include "ProceduralMeshComponent.h"
 #include "GameFramework/Actor.h"
+#include "QuadTree/QuadTreeSettings.h"
 #include "MeshGeneratorExample.generated.h"
+
+
+UENUM(BlueprintType)
+enum EMeshExampleMode {
+	QuadTree_2D = 0,
+	MarchingCubes_3D = 1,
+};
 
 UCLASS()
 class MESHGENERATOR_API AMeshGeneratorExample : public AActor
@@ -20,6 +28,9 @@ public:
 	UPROPERTY(VisibleAnywhere)
 	UProceduralMeshComponent* Mesh;
 
+	UPROPERTY(EditAnywhere)
+	TEnumAsByte<EMeshExampleMode> Mode;
+	
 	UPROPERTY(EditAnywhere)
 	UMaterial* Material;
 	UPROPERTY(EditAnywhere)
@@ -38,10 +49,17 @@ public:
 	bool showSides = false;
 
 	UPROPERTY(EditAnywhere)
+	FQuadTreeSettings QuadTreeSettings;
+	
+	UPROPERTY(EditAnywhere)
 	bool autoUpdate = false;
 
 	UPROPERTY(EditAnywhere)
-	FNoiseSettings NoiseSettings = FNoiseSettings(D3);
+	TArray<FNoiseSettings> NoiseSettings2D;
+
+	UPROPERTY(EditAnywhere)
+	TArray<FNoiseSettings> NoiseSettings3D;
+	// FNoiseSettings NoiseSettings = FNoiseSettings(D3);
 
 	UPROPERTY(Transient)
 	bool bHasBeenConstructed = false;
@@ -53,6 +71,7 @@ protected:
 
 	UFUNCTION(CallInEditor,meta=(Category="MeshGeneratorExample"))
 	void Generate();
+
 
 public:
 	// Called every frame
@@ -67,6 +86,7 @@ public:
 
 	UFUNCTION(CallInEditor,meta=(Category="MeshGeneratorExample"))
 	void Clear();
+	FVector GetPlayerPos() const;
 };
 
 
