@@ -3,17 +3,20 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "Noise.h"
 #include "NoiseSettings.h"
 #include "ProceduralMeshComponent.h"
 #include "GameFramework/Actor.h"
+#include "MeshData/MeshData.h"
 #include "QuadTree/QuadTreeSettings.h"
 #include "MeshGeneratorExample.generated.h"
 
 
 UENUM(BlueprintType)
 enum EMeshExampleMode {
-	QuadTree_2D = 0,
-	MarchingCubes_3D = 1,
+	Rect_2D = 0,
+	QuadTree_2D = 1,
+	MarchingCubes_3D = 2,
 };
 
 UCLASS()
@@ -72,6 +75,10 @@ protected:
 	UFUNCTION(CallInEditor,meta=(Category="MeshGeneratorExample"))
 	void Generate();
 
+	void UpdateMesh(FMeshData* Data);
+	
+	FNoiseMap2d* NoiseMap2D;
+	FNoiseMap3d* NoiseMap3D;
 
 public:
 	// Called every frame

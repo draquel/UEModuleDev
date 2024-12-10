@@ -32,23 +32,34 @@ void AMeshGeneratorExample::Generate()
 		default:
 		case 0:
 			UNoise::GenerateMap2D((FIntVector)GetActorLocation(),FIntVector2(Size.X+StepSize,Size.Y+StepSize),StepSize,NoiseSettings2D,[this](FNoiseMap2d NoiseMap)	{
+				this->NoiseMap2D = &NoiseMap;
+				FMeshData Data = UMeshDataGenerator::RectMesh(&NoiseMap,GetActorLocation(),Size,UVScale,(int)FMath::FloorToInt(Size.Z));
+				UpdateMesh(&Data);	
+			});
+		case 1:
+			UNoise::GenerateMap2D((FIntVector)GetActorLocation(),FIntVector2(Size.X+StepSize,Size.Y+StepSize),StepSize,NoiseSettings2D,[this](FNoiseMap2d NoiseMap)	{
+				this->NoiseMap2D = &NoiseMap; 
 				QuadTree QuadTree = QuadTree::QuadTree(GetActorLocation(),Size,QuadTreeSettings);
 				QuadTree.GenerateTree(GetPlayerPos());
-				FMeshData Data = UMeshDataGenerator::QuadTreeMesh(&QuadTree,&NoiseMap,UVScale,0,(int)FMath::FloorToInt(Size.Z));
-				Data.CreateProceduralMesh(Mesh);
-				DebugDraw();
-				Data.Reset();	
+				FMeshData Data = UMeshDataGenerator::QuadTreeMesh(&NoiseMap,&QuadTree,UVScale,0,(int)FMath::FloorToInt(Size.Z));
+				UpdateMesh(&Data);	
 			});	
 			break;
-		case 1:
+		case 2:
 			UNoise::GenerateMap3D((FIntVector)GetActorLocation(),(FIntVector)(Size+StepSize),StepSize,NoiseSettings3D,Floor,[this](FNoiseMap3d NoiseMap){
-				FMeshData Data = UMeshDataGenerator::MarchingCubes(NoiseMap,GetActorLocation(),Size,StepSize,UVScale,isoLevel,interpolate,showSides);
-				Data.CreateProceduralMesh(Mesh);
-				DebugDraw();
-				Data.Reset();	
+				this->NoiseMap3D = &NoiseMap; 
+				FMeshData Data = UMeshDataGenerator::MarchingCubes(&NoiseMap,GetActorLocation(),Size,StepSize,UVScale,isoLevel,interpolate,showSides);
+				UpdateMesh(&Data);	
 			});
 			break;
 	}
+}
+
+void AMeshGeneratorExample::UpdateMesh(FMeshData* Data)
+{
+	Data->CreateProceduralMesh(Mesh);
+	DebugDraw();
+	Data->Reset();
 }
 
 // Called every frame
