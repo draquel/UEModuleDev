@@ -1,10 +1,11 @@
 #include "Noise.h"
 #include "FastNoiseLite.h"
-#include "NoiseGenerator.h"
 #include "NoiseSettings.h"
 #include "Poisson.h"
 #include "Curves/CurveLinearColor.h"
 #include "NoiseGenerator/Public/NoiseComputeShader/NoiseComputeShader.h"
+
+//TODO: Issues with StepSize causing 2D GPU to scale unexpectedly. I have tried many things and am currently stumped, could it be the noise?
 
 FastNoiseLite UNoise::SetupFastNoise(FNoiseSettings* settings)
 {
@@ -54,23 +55,6 @@ float UNoise::Evaluate2D(FVector pos, FNoiseSettings* NoiseSettings)
 	return EvaluateFilter(noise.GetNoise(sample.X,sample.Y),NoiseSettings->filter);
 }
 
-float UNoise::EvaluateHeight(FVector pos, FNoiseSettings* NoiseSettings, int heightMultiplier)
-{
-	return Evaluate2D(pos,NoiseSettings) * heightMultiplier;
-}
-
-float UNoise::EvaluateSlope(FVector pos,FNoiseSettings* NoiseSettings, int heightMultiplier)
-{
-	float height = pos.Z; 
-	float heightX =  EvaluateHeight(pos+FVector(100,0,0),NoiseSettings,heightMultiplier);
-	float heightY =  EvaluateHeight(pos+FVector(0,100,0),NoiseSettings,heightMultiplier);
-
-	float slopeX = FMath::Abs(heightX - height) / 100;
-	float slopeY = FMath::Abs(heightY - height) / 100;
-
-	return slopeX > slopeY ? slopeX : slopeY;
-}
-
 //does this work?
 float UNoise::EvaluateHeightFalloff(FVector pos, FNoiseSettings* NoiseSettings, int heightMultiplier,int worldSize)
 {
@@ -81,18 +65,12 @@ float UNoise::EvaluateHeightFalloff(FVector pos, FNoiseSettings* NoiseSettings, 
 }
 
 //3D Noise
-
 float UNoise::Evaluate3D(FVector pos, FNoiseSettings* NoiseSettings)
 {
 	FastNoiseLite noise = SetupFastNoise(NoiseSettings);
 	FVector sample = (pos + NoiseSettings->offset) * (1.0f / NoiseSettings->scale);
 	if(NoiseSettings->domainWarping){ noise.DomainWarp(sample.X,sample.Y,sample.Z); }
 	return EvaluateFilter(noise.GetNoise(sample.X,sample.Y,sample.Z),NoiseSettings->filter);
-}
-
-float UNoise::EvaluateDensity(FVector pos, FNoiseSettings* NoiseSettings, float densityMultiplier)
-{
-	return Evaluate3D(pos,NoiseSettings) * densityMultiplier;
 }
 
 //Filters

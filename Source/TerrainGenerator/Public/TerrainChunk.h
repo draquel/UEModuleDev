@@ -30,7 +30,8 @@ class TERRAINGENERATOR_API ATerrainChunk : public AActor
 public:	
 	ATerrainChunk();
 	static bool EvaluateTerrain(FVector pos, FNoiseSettings* NoiseSettings, int heightMultiplier, FVector2D elevationLimits, FVector2D slopeLimits, FTerrainEvaluationData* data);
-	
+	static float EvaluateSlope(FVector pos, FNoiseSettings* NoiseSettings, int heightMultiplier);
+
 	UPROPERTY(EditAnywhere)
 	FVector2D Coord;
 	

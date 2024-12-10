@@ -22,7 +22,7 @@ FMeshData UMeshDataGenerator::RectMesh(FVector position, FVector size, FVector2D
 			if(NoiseSettings != NULL) {
 				FVector pos = FVector(position.X+(xStep*x),position.Y+(yStep*y),NoiseSettings->seed);
 				FVector lpos = FVector((xStep*x),(yStep*y),0);
-				MeshData.AddVertex(FVector(lpos.X,lpos.Y,UNoise::EvaluateHeight(pos,NoiseSettings,heightMultiplier)));
+				MeshData.AddVertex(FVector(lpos.X,lpos.Y,UNoise::Evaluate2D(pos,NoiseSettings) * heightMultiplier));
 			} else {
 				MeshData.AddVertex (FVector((xStep*x),(yStep*y),0));
 			}
@@ -74,23 +74,23 @@ FMeshData UMeshDataGenerator::QuadTreeMesh(QuadTree* QTree, float UVScale, int d
 		double lposY = (posY == posCorner.Y ? QTree->Size.Y : FMeshData::LocalizePos(QTree->Leaves[i].Center.Y + QTree->Leaves[i].Size.Y * 0.5f,QTree->Size.Y));
 		double lnegY = (negY == QTree->Position.Y ? 0 : FMeshData::LocalizePos(QTree->Leaves[i].Center.Y - QTree->Leaves[i].Size.Y * 0.5f,QTree->Size.Y));
 
-		double z = NoiseSettings == NULL ? 0 : UNoise::EvaluateHeight(FVector(QTree->Leaves[i].Center.X,QTree->Leaves[i].Center.Y,NoiseSettings->seed),NoiseSettings,heightMultiplier);
+		double z = NoiseSettings == NULL ? 0 : UNoise::Evaluate2D(FVector(QTree->Leaves[i].Center.X,QTree->Leaves[i].Center.Y,NoiseSettings->seed),NoiseSettings) * heightMultiplier;
 		MeshData.AddVertex(FVector(lzeroX,lzeroY,z));
 		int zeroIndex = MeshData.Vertices.Num() - 1;
 		
-		double z1 = NoiseSettings == NULL ? 0 : UNoise::EvaluateHeight(FVector(negX,posY,NoiseSettings->seed),NoiseSettings,heightMultiplier);
+		double z1 = NoiseSettings == NULL ? 0 : UNoise::Evaluate2D(FVector(negX,posY,NoiseSettings->seed),NoiseSettings) * heightMultiplier;
 		MeshData.AddVertex(FVector(lnegX,lposY,z1));
-		double z3 = NoiseSettings == NULL ? 0 : UNoise::EvaluateHeight(FVector(posX,posY,NoiseSettings->seed),NoiseSettings,heightMultiplier);
+		double z3 = NoiseSettings == NULL ? 0 : UNoise::Evaluate2D(FVector(posX,posY,NoiseSettings->seed),NoiseSettings) * heightMultiplier;
 		MeshData.AddVertex(FVector(lposX,lposY,z3));
-		double z5 = NoiseSettings == NULL ? 0 : UNoise::EvaluateHeight(FVector(posX,negY,NoiseSettings->seed),NoiseSettings,heightMultiplier);
+		double z5 = NoiseSettings == NULL ? 0 : UNoise::Evaluate2D(FVector(posX,negY,NoiseSettings->seed),NoiseSettings) * heightMultiplier;
 		MeshData.AddVertex(FVector(lposX,lnegY,z5));
-		double z7 = NoiseSettings == NULL ? 0 : UNoise::EvaluateHeight(FVector(negX,negY,NoiseSettings->seed),NoiseSettings,heightMultiplier);
+		double z7 = NoiseSettings == NULL ? 0 : UNoise::Evaluate2D(FVector(negX,negY,NoiseSettings->seed),NoiseSettings) * heightMultiplier;
 		MeshData.AddVertex(FVector(lnegX,lnegY,z7));
 		int index = zeroIndex + 4;
 
 		if(QTree->Leaves[i].Neighbors[2] || fmod(posY, QTree->Size.Y) == 0) //North
 		{
-			double z2 = NoiseSettings == NULL ? 0 : UNoise::EvaluateHeight(FVector(QTree->Leaves[i].Center.X,posY,NoiseSettings->seed),NoiseSettings,heightMultiplier);
+			double z2 = NoiseSettings == NULL ? 0 : UNoise::Evaluate2D(FVector(QTree->Leaves[i].Center.X,posY,NoiseSettings->seed),NoiseSettings) * heightMultiplier;
 			MeshData.AddVertex(FVector(lzeroX,lposY,z2));
 			index++;
 			MeshData.AddTriangle(zeroIndex+1,index,zeroIndex);
@@ -100,7 +100,7 @@ FMeshData UMeshDataGenerator::QuadTreeMesh(QuadTree* QTree, float UVScale, int d
 		}
 		if(QTree->Leaves[i].Neighbors[0] || fmod(posX, QTree->Size.X) == 0) // East
 		{
-			double z4 = NoiseSettings == NULL ? 0 : UNoise::EvaluateHeight(FVector(posX,QTree->Leaves[i].Center.Y,NoiseSettings->seed),NoiseSettings,heightMultiplier);
+			double z4 = NoiseSettings == NULL ? 0 : UNoise::Evaluate2D(FVector(posX,QTree->Leaves[i].Center.Y,NoiseSettings->seed),NoiseSettings) * heightMultiplier;
 			MeshData.AddVertex(FVector(lposX,lzeroY,z4));
 			index++;
 			MeshData.AddTriangle(zeroIndex+2,index,zeroIndex);
@@ -110,7 +110,7 @@ FMeshData UMeshDataGenerator::QuadTreeMesh(QuadTree* QTree, float UVScale, int d
 		}
 		if(QTree->Leaves[i].Neighbors[3] || fmod(negY, QTree->Size.Y) == 0) // South 
 		{
-			double z6 = NoiseSettings == NULL ? 0 : UNoise::EvaluateHeight(FVector(QTree->Leaves[i].Center.X,negY,NoiseSettings->seed),NoiseSettings,heightMultiplier);
+			double z6 = NoiseSettings == NULL ? 0 : UNoise::Evaluate2D(FVector(QTree->Leaves[i].Center.X,negY,NoiseSettings->seed),NoiseSettings) * heightMultiplier;
 			MeshData.AddVertex(FVector(lzeroX,lnegY,z6));
 			index++;
 			MeshData.AddTriangle(zeroIndex+3,index,zeroIndex);
@@ -120,7 +120,7 @@ FMeshData UMeshDataGenerator::QuadTreeMesh(QuadTree* QTree, float UVScale, int d
 		}
 		if(QTree->Leaves[i].Neighbors[1] || fmod(negX, QTree->Size.X) == 0) // West 
 		{
-			double z8 = NoiseSettings == NULL ? 0 : UNoise::EvaluateHeight(FVector(negX,QTree->Leaves[i].Center.Y,NoiseSettings->seed),NoiseSettings,heightMultiplier);
+			double z8 = NoiseSettings == NULL ? 0 : UNoise::Evaluate2D(FVector(negX,QTree->Leaves[i].Center.Y,NoiseSettings->seed),NoiseSettings) * heightMultiplier;
 			MeshData.AddVertex(FVector(lnegX,lzeroY,z8));
 			index++;
 			MeshData.AddTriangle(zeroIndex+4,index,zeroIndex);

@@ -246,9 +246,9 @@ void ATerrainChunk::InstanceFoliage(FFoliageGroupData* FoliageGroupData, FFoliag
 
 bool ATerrainChunk::EvaluateTerrain(FVector pos, FNoiseSettings* NoiseSettings, int heightMultiplier, FVector2D elevationLimits, FVector2D slopeLimits, FTerrainEvaluationData* data)
 {
-	float height = UNoise::EvaluateHeight(pos,NoiseSettings,heightMultiplier);
+	float height = UNoise::Evaluate2D(pos,NoiseSettings) * heightMultiplier;
 	FVector hpos = FVector(pos.X,pos.Y,height);
-	float slope = UNoise::EvaluateSlope(hpos,NoiseSettings,heightMultiplier);
+	float slope = EvaluateSlope(hpos,NoiseSettings,heightMultiplier);
 
 	bool heightValid = false;
 	bool slopeValid = false;
@@ -270,6 +270,18 @@ bool ATerrainChunk::EvaluateTerrain(FVector pos, FNoiseSettings* NoiseSettings, 
 	}
 	
 	return isValid;	
+}
+
+float ATerrainChunk::EvaluateSlope(FVector pos,FNoiseSettings* NoiseSettings, int heightMultiplier)
+{
+	float height = pos.Z; 
+	float heightX =  UNoise::Evaluate2D(pos+FVector(100,0,0),NoiseSettings) * heightMultiplier;
+	float heightY =  UNoise::Evaluate2D(pos+FVector(0,100,0),NoiseSettings) * heightMultiplier;
+
+	float slopeX = FMath::Abs(heightX - height) / 100;
+	float slopeY = FMath::Abs(heightY - height) / 100;
+
+	return slopeX > slopeY ? slopeX : slopeY;
 }
 
 FVector ATerrainChunk::CoordToPos(FVector2D chunkCoord, int chunkSize)

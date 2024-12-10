@@ -241,20 +241,15 @@ protected:
 public:
 	//CPU NOISE
 	static float Evaluate1D(float x, FNoiseSettings* NoiseSettings);
-	
 	static float Evaluate2D(FVector pos, FNoiseSettings* NoiseSettings);
-	static float EvaluateHeight(FVector pos, FNoiseSettings* NoiseSettings, int heightMultiplier);
-	static float EvaluateSlope(FVector pos, FNoiseSettings* NoiseSettings, int heightMultiplier);
-	static float EvaluateHeightFalloff(FVector pos, FNoiseSettings* NoiseSettings, int heightMultiplier, int worldSize);
-
 	static float Evaluate3D(FVector pos, FNoiseSettings* NoiseSettings);
-	static float EvaluateDensity(FVector pos, FNoiseSettings* NoiseSettings, float densityMultiplier);
-
-	static float EvaluateFilter(float noise, NoiseFilter filter);
+	
 	static float Normalize(float noise, float min, float max);
 	static float Normalize(NoiseNormalizeMode normalizeMode, float noise, FMinMax localMinMax, FMinMax typeMinMax);
 	static void Normalize(FNoiseMap2d* NoiseMap, NoiseNormalizeMode normalizeMode, NoiseType noiseType);
 	static void Normalize(FNoiseMap3d* NoiseMap, NoiseNormalizeMode normalizeMode, NoiseType noiseType);
+
+	static float EvaluateFilter(float noise, NoiseFilter filter);
 
 	//CPU 2D Maps
 	static FNoiseMap2d GenerateMap2D(FIntVector pos, FIntVector2 mapSize, int stepSize, FNoiseSettings* NoiseSettings);
