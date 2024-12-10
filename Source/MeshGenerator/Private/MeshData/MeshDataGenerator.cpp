@@ -47,7 +47,7 @@ FMeshData UMeshDataGenerator::RectMesh(FVector position, FVector size, FVector2D
 	MeshData.CalculateTangents();
 	
 	double end = FPlatformTime::Seconds();
-	UE_LOG(MeshGenerator, Log, TEXT("MeshGenerator::RectMesh() ==> Verts:%d,  Runtime: %f"), MeshData.Vertices.Num(), end - start);
+	UE_LOG(MeshGenerator, Log, TEXT("MeshGenerator::RectMesh() ==> Verts:%d, Tris:%d  Runtime: %f"), MeshData.Vertices.Num(), MeshData.Triangles.Num(), end - start);
 	return MeshData;
 }
 
@@ -133,7 +133,98 @@ FMeshData UMeshDataGenerator::QuadTreeMesh(QuadTree* QTree, float UVScale, int d
 	MeshData.CalculateTangents();
 
 	double end = FPlatformTime::Seconds();
-	UE_LOG(MeshGenerator, Log, TEXT("MeshGenerator::QuadTreeMesh() ==> Verts:%d,  Runtime: %f"), MeshData.Vertices.Num(), end - start);
+	UE_LOG(MeshGenerator, Log, TEXT("MeshGenerator::QuadTreeMesh() ==> Verts: %d, Tris: %d  Runtime: %f"), MeshData.Vertices.Num(), MeshData.Triangles.Num(), end - start);
+	return MeshData;
+}
+
+FMeshData UMeshDataGenerator::QuadTreeMesh(QuadTree* QTree, FNoiseMap2d* NoiseMap, float UVScale, int depthFilter, int heightMultiplier)
+{
+	FMeshData MeshData = FMeshData();
+	MeshData.UVScale = UVScale;
+	double start = FPlatformTime::Seconds();
+
+	if (QTree->Settings.MinSize % NoiseMap->StepSize != 0) {
+		UE_LOG(MeshGenerator,Error,TEXT("MeshGenerator::OuadTreeMesh ==> The QuadTree.Settings.MinSize[%d] must be evenly divisible by the FNoiseMap2D.StepSize[%d]."),QTree->Settings.MinSize,NoiseMap->StepSize);
+		return MeshData;	
+	}
+
+	FVector posCorner = QTree->Position + QTree->Size;
+	for (int i = 0; i < QTree->Leaves.Num(); i++) {
+		if(depthFilter != 0 && QTree->Leaves[i].Depth < depthFilter){ continue; }
+
+		//Corners
+		double posX = QTree->Leaves[i].Center.X + QTree->Leaves[i].Size.X * 0.5f;
+		double negX = QTree->Leaves[i].Center.X - QTree->Leaves[i].Size.X * 0.5f;
+		double posY = QTree->Leaves[i].Center.Y + QTree->Leaves[i].Size.Y * 0.5f;
+		double negY = QTree->Leaves[i].Center.Y - QTree->Leaves[i].Size.Y * 0.5f;
+
+		double lzeroX = FMeshData::LocalizePos(QTree->Leaves[i].Center.X,QTree->Size.X);
+		double lzeroY = FMeshData::LocalizePos(QTree->Leaves[i].Center.Y,QTree->Size.Y);
+		double lposX = (posX == posCorner.X ? QTree->Size.X : FMeshData::LocalizePos(QTree->Leaves[i].Center.X + QTree->Leaves[i].Size.X * 0.5f,QTree->Size.X));
+		double lnegX = (negX == QTree->Position.X ? 0 : FMeshData::LocalizePos(QTree->Leaves[i].Center.X - QTree->Leaves[i].Size.X * 0.5f,QTree->Size.X));
+		double lposY = (posY == posCorner.Y ? QTree->Size.Y : FMeshData::LocalizePos(QTree->Leaves[i].Center.Y + QTree->Leaves[i].Size.Y * 0.5f,QTree->Size.Y));
+		double lnegY = (negY == QTree->Position.Y ? 0 : FMeshData::LocalizePos(QTree->Leaves[i].Center.Y - QTree->Leaves[i].Size.Y * 0.5f,QTree->Size.Y));
+
+		double z = NoiseMap->Map[FIntVector2(QTree->Leaves[i].Center.X,QTree->Leaves[i].Center.Y)] * heightMultiplier;
+		MeshData.AddVertex(FVector(lzeroX,lzeroY,z));
+		int zeroIndex = MeshData.Vertices.Num() - 1;
+		
+		double z1 = NoiseMap->Map[FIntVector2(negX,posY)] * heightMultiplier;
+		MeshData.AddVertex(FVector(lnegX,lposY,z1));
+		double z3 = NoiseMap->Map[FIntVector2(posX,posY)] * heightMultiplier;
+		MeshData.AddVertex(FVector(lposX,lposY,z3));
+		double z5 = NoiseMap->Map[FIntVector2(posX,negY)] * heightMultiplier;
+		MeshData.AddVertex(FVector(lposX,lnegY,z5));
+		double z7 = NoiseMap->Map[FIntVector2(negX,negY)] * heightMultiplier;
+		MeshData.AddVertex(FVector(lnegX,lnegY,z7));
+		int index = zeroIndex + 4;
+
+		if(QTree->Leaves[i].Neighbors[2] || fmod(posY, QTree->Size.Y) == 0) //North
+		{
+			double z2 = NoiseMap->Map[FIntVector2(QTree->Leaves[i].Center.X,posY)] * heightMultiplier;
+			MeshData.AddVertex(FVector(lzeroX,lposY,z2));
+			index++;
+			MeshData.AddTriangle(zeroIndex+1,index,zeroIndex);
+			MeshData.AddTriangle(index,zeroIndex+2,zeroIndex);			
+		}else {
+			MeshData.AddTriangle(zeroIndex+1,zeroIndex+2,zeroIndex);
+		}
+		if(QTree->Leaves[i].Neighbors[0] || fmod(posX, QTree->Size.X) == 0) // East
+		{
+			double z4 = NoiseMap->Map[FIntVector2(posX,QTree->Leaves[i].Center.Y)] * heightMultiplier;
+			MeshData.AddVertex(FVector(lposX,lzeroY,z4));
+			index++;
+			MeshData.AddTriangle(zeroIndex+2,index,zeroIndex);
+			MeshData.AddTriangle(index,zeroIndex+3,zeroIndex);			
+		}else {
+			MeshData.AddTriangle(zeroIndex+2,zeroIndex+3,zeroIndex);
+		}
+		if(QTree->Leaves[i].Neighbors[3] || fmod(negY, QTree->Size.Y) == 0) // South 
+		{
+			double z6 = NoiseMap->Map[FIntVector2(QTree->Leaves[i].Center.X,negY)] * heightMultiplier;
+			MeshData.AddVertex(FVector(lzeroX,lnegY,z6));
+			index++;
+			MeshData.AddTriangle(zeroIndex+3,index,zeroIndex);
+			MeshData.AddTriangle(index,zeroIndex+4,zeroIndex);			
+		}else {
+			MeshData.AddTriangle(zeroIndex+3,zeroIndex+4,zeroIndex);
+		}
+		if(QTree->Leaves[i].Neighbors[1] || fmod(negX, QTree->Size.X) == 0) // West 
+		{
+			double z8 = NoiseMap->Map[FIntVector2(negX,QTree->Leaves[i].Center.Y)] * heightMultiplier;
+			MeshData.AddVertex(FVector(lnegX,lzeroY,z8));
+			index++;
+			MeshData.AddTriangle(zeroIndex+4,index,zeroIndex);
+			MeshData.AddTriangle(index,zeroIndex+1,zeroIndex);			
+		}else {
+			MeshData.AddTriangle(zeroIndex+4,zeroIndex+1,zeroIndex);
+		}
+	}
+
+	MeshData.CalculateTangents();
+
+	double end = FPlatformTime::Seconds();
+	UE_LOG(MeshGenerator, Log, TEXT("MeshGenerator::QuadTreeMesh() ==> Verts: %d, Tris: %d  Runtime: %f"), MeshData.Vertices.Num(), MeshData.Triangles.Num(), end - start);
 	return MeshData;
 }
 
@@ -209,11 +300,10 @@ FMeshData UMeshDataGenerator::MarchingCubes(FNoiseMap3d NoiseMap, FVector positi
         }
     }
 
-    // SUPER EXPENSIVE HERE (and everywhere)--- needs alternatives / optimization???
     MeshData.CalculateTangents();
 
     double end = FPlatformTime::Seconds();
-    UE_LOG(MeshGenerator, Log, TEXT("MeshGenerator::MarchingCubes ==> Verts:%d,  Runtime: %f"), MeshData.Vertices.Num(), end - start);
+    UE_LOG(MeshGenerator, Log, TEXT("MeshGenerator::MarchingCubes ==> Verts: %d, Tris: %d,  Runtime: %f"), MeshData.Vertices.Num(), MeshData.Triangles.Num(), end - start);
 
     return MeshData;
 }

@@ -22,6 +22,8 @@ public:
 
 	static FMeshData RectMesh(FVector position, FVector size, FVector2D segments, float UVScale = 1, FNoiseSettings* NoiseSettings = NULL, int heightMultiplier = 500);
 	static FMeshData QuadTreeMesh(QuadTree* QTree, float UVScale = 1, int depthFilter = 0, FNoiseSettings* NoiseSettings = NULL, int heightMultiplier = 500);
+	static FMeshData QuadTreeMesh(QuadTree* QTree, FNoiseMap2d* NoiseMap, float UVScale, int depthFilter,
+	                              int heightMultiplier);
 	static FMeshData MarchingCubes(FNoiseMap3d NoiseMap, FVector position, FVector size, int stepSize, float UVScale, float isoLevel, bool interpolate, bool
 	                               renderSides = false);
 
