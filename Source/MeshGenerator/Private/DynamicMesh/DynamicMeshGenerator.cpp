@@ -25,7 +25,7 @@ FDynamicMesh3 DynamicMeshGenerator::RectMesh(FVector position, FVector size, FVe
 			if(NoiseSettings != NULL) {
 				FVector pos = FVector(position.X+(xStep*x),position.Y+(yStep*y),NoiseSettings->seed);
 				FVector lpos = FVector((xStep*x),(yStep*y),0);
-				DynamicMesh.AppendVertex(FVector(lpos.X,lpos.Y,UNoise::EvaluateHeight(pos,NoiseSettings,heightMultiplier)));
+				DynamicMesh.AppendVertex(FVector(lpos.X,lpos.Y,UNoise::Evaluate2D(pos,NoiseSettings) * heightMultiplier));
 				DynamicMesh.SetVertexUV(vertIndex,FVector2f(lpos.X,lpos.Y)*UVScale);
 			} else {
 				DynamicMesh.AppendVertex(FVector((xStep*x),(yStep*y),0));
@@ -78,27 +78,27 @@ FDynamicMesh3 DynamicMeshGenerator::QuadTreeMesh(QuadTree* QTree, FVector player
 		double lnegY = (negY == QTree->Position.Y ? 0 : FMeshData::LocalizePos(QTree->Leaves[i].Center.Y - QTree->Leaves[i].Size.Y * 0.5f,QTree->Size.Y));
 
 		int zeroIndex = DynamicMesh.VertexCount();
-		double z = NoiseSettings == NULL ? 0 : UNoise::EvaluateHeight(FVector(QTree->Leaves[i].Center.X,QTree->Leaves[i].Center.Y,NoiseSettings->seed),NoiseSettings,heightMultiplier);
+		double z = NoiseSettings == NULL ? 0 : UNoise::Evaluate2D(FVector(QTree->Leaves[i].Center.X,QTree->Leaves[i].Center.Y,NoiseSettings->seed),NoiseSettings) * heightMultiplier;
 		DynamicMesh.AppendVertex(FVector(lzeroX,lzeroY,z));
 		DynamicMesh.SetVertexUV(zeroIndex,FVector2f(lzeroX,lzeroY)*UVScale);
 		
-		double z1 = NoiseSettings == NULL ? 0 : UNoise::EvaluateHeight(FVector(negX,posY,NoiseSettings->seed),NoiseSettings,heightMultiplier);
+		double z1 = NoiseSettings == NULL ? 0 : UNoise::Evaluate2D(FVector(negX,posY,NoiseSettings->seed),NoiseSettings) * heightMultiplier;
 		DynamicMesh.AppendVertex(FVector(lnegX,lposY,z1));
 		DynamicMesh.SetVertexUV(zeroIndex+1,FVector2f(lnegX,lposY)*UVScale);	
-		double z3 = NoiseSettings == NULL ? 0 : UNoise::EvaluateHeight(FVector(posX,posY,NoiseSettings->seed),NoiseSettings,heightMultiplier);
+		double z3 = NoiseSettings == NULL ? 0 : UNoise::Evaluate2D(FVector(posX,posY,NoiseSettings->seed),NoiseSettings) * heightMultiplier;
 		DynamicMesh.AppendVertex(FVector(lposX,lposY,z3));
 		DynamicMesh.SetVertexUV(zeroIndex+2,FVector2f(lposX,lposY)*UVScale);
-		double z5 = NoiseSettings == NULL ? 0 : UNoise::EvaluateHeight(FVector(posX,negY,NoiseSettings->seed),NoiseSettings,heightMultiplier);
+		double z5 = NoiseSettings == NULL ? 0 : UNoise::Evaluate2D(FVector(posX,negY,NoiseSettings->seed),NoiseSettings) * heightMultiplier;
 		DynamicMesh.AppendVertex(FVector(lposX,lnegY,z5));
 		DynamicMesh.SetVertexUV(zeroIndex+3,FVector2f(lposX,lnegY)*UVScale);
-		double z7 = NoiseSettings == NULL ? 0 : UNoise::EvaluateHeight(FVector(negX,negY,NoiseSettings->seed),NoiseSettings,heightMultiplier);
+		double z7 = NoiseSettings == NULL ? 0 : UNoise::Evaluate2D(FVector(negX,negY,NoiseSettings->seed),NoiseSettings) * heightMultiplier;
 		DynamicMesh.AppendVertex(FVector(lnegX,lnegY,z7));
 		DynamicMesh.SetVertexUV(zeroIndex+4,FVector2f(lnegX,lnegY)*UVScale);
 		int index = zeroIndex + 4;
 
 		if(QTree->Leaves[i].Neighbors[2] ||	(fmod(posY, QTree->Size.Y) == 0 /*&& FVector::Distance(playerPos,QTree->Leaves[i].Center+FVector(0,QTree->Leaves[i].Size.Y*2,0)) > QTree->Leaves[i].Size.Y*QTree->Settings.DistanceModifier*/)) //North
 		{
-			double z2 = NoiseSettings == NULL ? 0 : UNoise::EvaluateHeight(FVector(QTree->Leaves[i].Center.X,posY,NoiseSettings->seed),NoiseSettings,heightMultiplier);
+			double z2 = NoiseSettings == NULL ? 0 : UNoise::Evaluate2D(FVector(QTree->Leaves[i].Center.X,posY,NoiseSettings->seed),NoiseSettings) * heightMultiplier;
 			index++;
 			DynamicMesh.AppendVertex(FVector(lzeroX,lposY,z2));
 			DynamicMesh.SetVertexUV(index,FVector2f(lzeroX,lposY)*UVScale);
@@ -109,7 +109,7 @@ FDynamicMesh3 DynamicMeshGenerator::QuadTreeMesh(QuadTree* QTree, FVector player
 		}
 		if(QTree->Leaves[i].Neighbors[0] || fmod(posX, QTree->Size.X) == 0) // East
 		{
-			double z4 = NoiseSettings == NULL ? 0 : UNoise::EvaluateHeight(FVector(posX,QTree->Leaves[i].Center.Y,NoiseSettings->seed),NoiseSettings,heightMultiplier);
+			double z4 = NoiseSettings == NULL ? 0 : UNoise::Evaluate2D(FVector(posX,QTree->Leaves[i].Center.Y,NoiseSettings->seed),NoiseSettings) * heightMultiplier;
 			index++;
 			DynamicMesh.AppendVertex(FVector(lposX,lzeroY,z4));
 			DynamicMesh.SetVertexUV(index,FVector2f(lposX,lzeroY)*UVScale);
@@ -120,7 +120,7 @@ FDynamicMesh3 DynamicMeshGenerator::QuadTreeMesh(QuadTree* QTree, FVector player
 		}
 		if(QTree->Leaves[i].Neighbors[3] || fmod(negY, QTree->Size.Y) == 0) // South 
 		{
-			double z6 = NoiseSettings == NULL ? 0 : UNoise::EvaluateHeight(FVector(QTree->Leaves[i].Center.X,negY,NoiseSettings->seed),NoiseSettings,heightMultiplier);
+			double z6 = NoiseSettings == NULL ? 0 : UNoise::Evaluate2D(FVector(QTree->Leaves[i].Center.X,negY,NoiseSettings->seed),NoiseSettings) * heightMultiplier;
 			index++;
 			DynamicMesh.AppendVertex(FVector(lzeroX,lnegY,z6));
 			DynamicMesh.SetVertexUV(index,FVector2f(lzeroX,lnegY)*UVScale);
@@ -131,7 +131,7 @@ FDynamicMesh3 DynamicMeshGenerator::QuadTreeMesh(QuadTree* QTree, FVector player
 		}
 		if(QTree->Leaves[i].Neighbors[1] || fmod(negX, QTree->Size.X) == 0) // West 
 		{
-			double z8 = NoiseSettings == NULL ? 0 : UNoise::EvaluateHeight(FVector(negX,QTree->Leaves[i].Center.Y,NoiseSettings->seed),NoiseSettings,heightMultiplier);
+			double z8 = NoiseSettings == NULL ? 0 : UNoise::Evaluate2D(FVector(negX,QTree->Leaves[i].Center.Y,NoiseSettings->seed),NoiseSettings) * heightMultiplier;
 			index++;
 			DynamicMesh.AppendVertex(FVector(lnegX,lzeroY,z8));
 			DynamicMesh.SetVertexUV(index,FVector2f(lnegX,lzeroY)*UVScale);
