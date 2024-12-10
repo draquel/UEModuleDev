@@ -25,54 +25,53 @@ float FilterRigid(float noise)
 	return v * v * 2 - 1; 
 }
 
-float Noise(uint3 Coord, float3 Position, float3 Offset, int Type, int Filter, int NormalizeMode, int Octaves, float Frequency, float Lacunarity, float Persistence, float Scale){
-	float2 mapPos = float2(Position.x + Coord.x, Position.y + Coord.y);
-	float x = ( mapPos.x + Offset.x) * (1.0f/Scale);
-	float y = ( mapPos.y + Offset.y) * (1.0f/Scale);
-	float2 sample = float2(x,y);
-	float noise = 0.0f;
+float Noise(float2 Coord, float3 Position, float3 Offset, int Type, int Filter, int NormalizeMode, int Octaves, float Frequency, float Lacunarity, float Persistence, float Scale)
+{
+    // Compute world-space sample position
+    float2 sample = (Position.xy + float2(Coord.x, Coord.y) + Offset.xy) * (1.0f / Scale);
+    float noise = 0.0f;
 
-	//Generate Noise - Warp
-	float min = -1.0f;
-	float max = 1.0f;
-	switch (Type){
-	case 1: //Perlin
-		noise = ClassicFBM(sample, Octaves, Frequency, Lacunarity, Persistence);
-		if (DomainWarp > 0){ noise = ClassicDomainWarping(sample,DomainWarp, Octaves, Frequency, Lacunarity, Persistence); }
-		min = -0.36f;
-		max = 0.375f;
-		break;
-	case 2: //Simplex
-		noise = snoiseFBM(sample, Octaves, Frequency, Lacunarity, Persistence);
-		if (DomainWarp > 0){ noise = snoiseDomainWarping(sample,DomainWarp, Octaves, Frequency, Lacunarity, Persistence); }
-		min = -0.625f;
-		max = 0.525f; 
-		break;
-	default: //None? shouldnt be allowed to happen
-		break;
-	}
+    // Generate Noise - Warp
+    float min = -1.0f;
+    float max = 1.0f;
+    switch (Type) {
+    case 1: // Perlin
+        noise = ClassicFBM(sample, Octaves, Frequency, Lacunarity, Persistence);
+        if (DomainWarp > 0) { noise = ClassicDomainWarping(sample, DomainWarp, Octaves, Frequency, Lacunarity, Persistence); }
+        min = -0.36f;
+        max = 0.375f;
+        break;
+    case 2: // Simplex
+        noise = snoiseFBM(sample, Octaves, Frequency, Lacunarity, Persistence);
+        if (DomainWarp > 0) { noise = snoiseDomainWarping(sample, DomainWarp, Octaves, Frequency, Lacunarity, Persistence); }
+        min = -0.625f;
+        max = 0.525f;
+        break;
+    default: // None
+        break;
+    }
 
-	//Mutations - Filters / Normalization
-	switch (Filter){
-	case 1: // Rigid 
-		noise = FilterRigid(noise);
-		break;
-	default: //None
-		break;
-	}
-    
-	switch (NormalizeMode) {
-	case 3://Global
-		noise = (1-(-1))/(max-min)*(noise-min)+(-1);
-		break;
-	case 4: //GlobalPositive
-		noise = (noise - (min)) / (max - (min));
-		break;
-	default:
-		break;
-	}
-	return noise;
-	
+    // Mutations - Filters / Normalization
+    switch (Filter) {
+    case 1: // Rigid
+        noise = FilterRigid(noise);
+        break;
+    default: // None
+        break;
+    }
+
+    switch (NormalizeMode) {
+    case 3: // Global
+        noise = (1 - (-1)) / (max - min) * (noise - min) + (-1);
+        break;
+    case 4: // GlobalPositive
+        noise = (noise - min) / (max - min);
+        break;
+    default:
+        break;
+    }
+
+    return noise;
 }
 
 float Noise3(uint3 Coord, float3 Position, float3 Size, float3 Offset, int Type, int Filter, int NormalizeMode, int Octaves, float Frequency, float Lacunarity, float Persistence, float Scale,int DensityFunction){
@@ -96,7 +95,7 @@ float Noise3(uint3 Coord, float3 Position, float3 Size, float3 Offset, int Type,
 				noise = mapPos.z + ClassicFBM(sample, Octaves, Frequency, Lacunarity, Persistence)*Size.z; 
 				break;
 			case 2:
-				noise = 500 - length(mapPos) + ClassicFBM(sample, Octaves, Frequency, Lacunarity, Persistence);
+				noise = Size.x - length(mapPos) + ClassicFBM(sample, Octaves, Frequency, Lacunarity, Persistence);
 				break;
 		}
 		// if (DomainWarp > 0){ noise = ClassicDomainWarping(sample,DomainWarp, Octaves, Frequency, Lacunarity, Persistence); }

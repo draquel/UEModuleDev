@@ -94,7 +94,7 @@ struct FNoiseMap2d
 			for(int y = 0; y < scaledSize.Y; y++) {
 				FIntVector2 mp = FIntVector2(x, y);
 				FIntVector2 index = FIntVector2(Position.X, Position.Y) + mp * StepSize;
-				Map.Add(index,InMap[y * scaledSize.X + x]);
+				Map.Add(index,InMap[mp.X + (mp.Y * scaledSize.X)]);
 				MinMax.Add(Map[index]);
 			}
 		}
@@ -123,7 +123,7 @@ struct FNoiseMap2d
 };
 
 USTRUCT()
-struct FNoiseLayerData
+struct FNoiseLayer2DData
 {
 	GENERATED_BODY();
 
@@ -136,9 +136,9 @@ struct FNoiseLayerData
 	UCurveFloat* curve = nullptr;
 
 
-	FNoiseLayerData(){}
+	FNoiseLayer2DData(){}
 	
-	FNoiseLayerData(FNoiseMap2d InNoiseMap, float InGain, UCurveFloat* InCurve)
+	FNoiseLayer2DData(FNoiseMap2d InNoiseMap, float InGain, UCurveFloat* InCurve)
 	{
 		noiseMap = InNoiseMap;
 		gain = InGain;
@@ -227,6 +227,30 @@ struct FNoiseMap3d
 	// Move assignment
 	FNoiseMap3d& operator=(FNoiseMap3d&& Other) noexcept = default;
 };
+
+USTRUCT()
+struct FNoiseLayer3DData
+{
+	GENERATED_BODY();
+
+	FNoiseMap3d noiseMap;
+
+	UPROPERTY()
+	float gain = 1.0f;
+
+	UPROPERTY()
+	UCurveFloat* curve = nullptr;
+
+	FNoiseLayer3DData(){}
+	
+	FNoiseLayer3DData(FNoiseMap3d InNoiseMap, float InGain, UCurveFloat* InCurve)
+	{
+		noiseMap = InNoiseMap;
+		gain = InGain;
+		curve = InCurve;
+	}
+};
+
 UCLASS()
 class NOISEGENERATOR_API UNoise : public UObject
 {
@@ -239,7 +263,7 @@ protected:
 	static FMinMax GetTypeMinMax(NoiseType type);
 
 public:
-	//CPU NOISE
+	//CPU NOISE Evaluation
 	static float Evaluate1D(float x, FNoiseSettings* NoiseSettings);
 	static float Evaluate2D(FVector pos, FNoiseSettings* NoiseSettings);
 	static float Evaluate3D(FVector pos, FNoiseSettings* NoiseSettings);
@@ -254,24 +278,26 @@ public:
 	//CPU 2D Maps
 	static FNoiseMap2d GenerateMap2D(FIntVector pos, FIntVector2 mapSize, int stepSize, FNoiseSettings* NoiseSettings);
 	static FNoiseMap2d GenerateMap2D(FIntVector pos, FIntVector2 mapSize, int stepSize, TArray<FNoiseSettings>* NoiseSettings);
-	static void GenerateMap2D(FNoiseMap2d& NoiseMap,TArray<FNoiseLayerData>* layerData);
+	static void GenerateMap2D(FNoiseMap2d& NoiseMap,TArray<FNoiseLayer2DData>* layerData);
 
 	//Needs unique Name -- Accessors for CPU & GPU Generation, with callback to handle Async uniformily.
-	static void GenerateMap2D(FIntVector pos, FIntVector2 mapSize, int stepSize, FNoiseSettings NoiseSettings, TFunction<void(FNoiseMap2d NoiseMap)>
-	                          Callback);
-	static void GenerateMap2D(FIntVector pos, FIntVector2 mapSize, int stepSize, TArray<FNoiseSettings> NoiseSettings, TFunction<void(FNoiseMap2d
-		                          NoiseMap)> Callback);
+	static void GenerateMap2D(FIntVector pos, FIntVector2 mapSize, int stepSize, FNoiseSettings NoiseSettings, TFunction<void(FNoiseMap2d NoiseMap)> Callback);
+	static void GenerateMap2D(FIntVector pos, FIntVector2 mapSize, int stepSize, TArray<FNoiseSettings> NoiseSettings, TFunction<void(FNoiseMap2d NoiseMap)> Callback);
 	
 	//2D TEXTURE Generators
 	static UTexture2D* GenerateTexture(FIntVector pos, FIntVector2 mapSize, FNoiseSettings* NoiseSettings, UCurveLinearColor* ColorCurve = nullptr);
 	static UTexture2D* GenerateTexture(FIntVector pos, FIntVector2 mapSize, TArray<FNoiseSettings>* NoiseSettings, UCurveLinearColor* ColorCurve = nullptr);
 	static UTexture2D* GenerateTexture(FNoiseMap2d* NoiseMap, UCurveLinearColor* ColorCurve = nullptr);
 
-	static FNoiseMap3d GenerateMap3D(FIntVector pos, FIntVector mapSize, int stepSize, FNoiseSettings* NoiseSettings, NoiseDensityFunction DensityFunction =
-		                                 NoDensityFunction);
-	static void GenerateMap3D(FIntVector pos, FIntVector mapSize, int stepSize, FNoiseSettings NoiseSettings, NoiseDensityFunction DensityFunction, TFunction
-	                          <void(FNoiseMap3d NoiseMap)> Callback);
+	//CPU 3D Maps
+	static FNoiseMap3d GenerateMap3D(FIntVector pos, FIntVector mapSize, int stepSize, FNoiseSettings* NoiseSettings, NoiseDensityFunction DensityFunction = NoDensityFunction);
+	static void GenerateMap3D(FNoiseMap3d& NoiseMap,TArray<FNoiseLayer3DData>* layerData);
 
+	//Needs unique Name -- Accessors for CPU & GPU Generation, with callback to handle Async uniformily.
+	static void GenerateMap3D(FIntVector pos, FIntVector mapSize, int stepSize, FNoiseSettings NoiseSettings, NoiseDensityFunction DensityFunction, TFunction<void(FNoiseMap3d NoiseMap)> Callback);
+	static void GenerateMap3D(FIntVector pos, FIntVector mapSize, int stepSize, TArray<FNoiseSettings> NoiseSettings, NoiseDensityFunction DensityFunction, TFunction<void(FNoiseMap3d NoiseMap)> Callback);
+
+	//Poisson
 	static FVector2D PoissonSample(const FVector2D& center, float minRadius, float maxRadius);
 	static TArray<FVector2D> PoissonDiscSample(const FVector2D& topLeft, const FVector2D& bottomRight, float minDist, int newPointsCount);
 };

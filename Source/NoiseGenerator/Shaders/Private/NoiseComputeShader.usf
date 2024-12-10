@@ -25,31 +25,23 @@ float DomainWarp;
 [numthreads(THREADS_X, THREADS_Y, THREADS_Z)]
 void NoiseComputeShader(uint3 DispatchThreadId : SV_DispatchThreadID, uint GroupIndex : SV_GroupIndex )
 {
-	if (Mode == 2){
-		if (DispatchThreadId.x >= Size.x || DispatchThreadId.y >= Size.y || DispatchThreadId.z >= 1) return;
-		
-		//Sample point
-		uint3 mapPos = uint3(DispatchThreadId.x,DispatchThreadId.y,0);
-		float noise = Noise(mapPos*StepSize, Position, Offset,Type,Filter,NormalizeMode,Octaves,Frequency,Lacunarity,Persistence,Scale);
-    
-		//Set Output Buffer
-		Output[mapPos.y * Size.x + mapPos.x] = noise;	
-	}
-	if (Mode == 3){
-		uint3 totalGridSize = uint3(Size.x,Size.y,Size.z);
-		uint totalThreads = THREADS_X * THREADS_Y * THREADS_Z;
-		uint flatIndex = DispatchThreadId.x + DispatchThreadId.y * totalGridSize.x + DispatchThreadId.z * totalGridSize.x * totalGridSize.y;
-		for (uint index = flatIndex; index < (totalGridSize.x * totalGridSize.y * totalGridSize.z); index += totalThreads)
-		{
-			// //Sample point
-			uint3 coords;
-			coords.z = index / (totalGridSize.x * totalGridSize.y);
-			coords.y = (index / totalGridSize.x) % totalGridSize.y;
-			coords.x = index % totalGridSize.x;
-			float noise = Noise3(coords*StepSize,Position,Size*StepSize,Offset,Type,Filter,NormalizeMode,Octaves,Frequency,Lacunarity,Persistence,Scale,DensityFunction);
+	uint3 totalGridSize = uint3(Size.x,Size.y,Size.z);
+	uint totalThreads = THREADS_X * THREADS_Y * THREADS_Z;
+	uint flatIndex = DispatchThreadId.x + DispatchThreadId.y * totalGridSize.x + DispatchThreadId.z * totalGridSize.x * totalGridSize.y;
+	for (uint index = flatIndex; index < (totalGridSize.x * totalGridSize.y * totalGridSize.z); index += totalThreads){
+		uint3 coords;
+		coords.z = index / (totalGridSize.x * totalGridSize.y);
+		coords.y = (index / totalGridSize.x) % totalGridSize.y;
+		coords.x = index % totalGridSize.x;
 
-			//Set Output Buffer
-			Output[index] = noise;
+		
+		float noise = 0.0f;
+		if (Mode == 2) {
+			noise = Noise(coords*StepSize,Position,Offset,Type,Filter,NormalizeMode,Octaves,Frequency,Lacunarity,Persistence,Scale);
 		}
+		if (Mode == 3){
+			noise = Noise3(coords*StepSize,Position,Size*StepSize,Offset,Type,Filter,NormalizeMode,Octaves,Frequency,Lacunarity,Persistence,Scale,DensityFunction);
+		}
+		Output[index] = noise;
 	}
 }
