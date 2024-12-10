@@ -21,11 +21,11 @@ public:
 	static TQueue<FRectMeshDataThreadData*,EQueueMode::Mpsc> RectMeshDataThread;
 
 	static FMeshData RectMesh(FVector position, FVector size, FVector2D segments, float UVScale = 1, FNoiseSettings* NoiseSettings = NULL, int heightMultiplier = 500);
+	static FMeshData RectMesh(FNoiseMap2d* NoiseMap, FVector position, FVector size, float UVScale, int heightMultiplier);
 	static FMeshData QuadTreeMesh(QuadTree* QTree, float UVScale = 1, int depthFilter = 0, FNoiseSettings* NoiseSettings = NULL, int heightMultiplier = 500);
-	static FMeshData QuadTreeMesh(QuadTree* QTree, FNoiseMap2d* NoiseMap, float UVScale, int depthFilter,
-	                              int heightMultiplier);
-	static FMeshData MarchingCubes(FNoiseMap3d NoiseMap, FVector position, FVector size, int stepSize, float UVScale, float isoLevel, bool interpolate, bool
-	                               renderSides = false);
+	static FMeshData QuadTreeMesh(FNoiseMap2d* NoiseMap, QuadTree* QTree, float UVScale, int depthFilter, int heightMultiplier);
+	static FMeshData MarchingCubes(FVector position, FVector size, int stepSize, FNoiseSettings* NoiseSettings, float UVScale,float isoLevel, bool interpolate, bool renderSides);
+	static FMeshData MarchingCubes(FNoiseMap3d* NoiseMap, FVector position, FVector size, int stepSize, float UVScale, float isoLevel, bool interpolate, bool renderSides = false);
 
 private:
 	static FVector Interp(FVector edgeVertex1, float valueAtVertex1, FVector edgeVertex2, float valueAtVertex2, float isoLevel);
