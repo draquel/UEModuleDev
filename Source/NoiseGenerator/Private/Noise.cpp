@@ -219,13 +219,13 @@ void UNoise::GenerateMap2D(FNoiseMap2d& NoiseMap, TArray<FNoiseLayer2DData>* lay
 
 void UNoise::GenerateMap2D(FIntVector pos, FIntVector2 mapSize, int stepSize, FNoiseSettings NoiseSettings, TFunction<void(FNoiseMap2d NoiseMap)> Callback)
 {
-	int cycles = mapSize.X * mapSize.Y/stepSize * NoiseSettings.octaves;
+	int32 cycles = mapSize.X * mapSize.Y/stepSize * NoiseSettings.octaves;
 	double start = FPlatformTime::Seconds();
 
 	if(NoiseSettings.source == CPU) {
 		FNoiseMap2d NoiseMap = GenerateMap2D(pos,mapSize,stepSize, &NoiseSettings);
 		double end = FPlatformTime::Seconds();
-		UE_LOG(NoiseGenerator,Log,TEXT("UNoise::GenerateMap2D ==> %s-%s, Cycles: %d, RunTime: %fs"),*UEnum::GetValueAsString(NoiseSettings.source),*UEnum::GetValueAsString(NoiseSettings.type),cycles,end-start);
+		UE_LOG(NoiseGenerator,Log,TEXT("UNoise::GenerateMap2D ==> %s-%s, Cycles: %u, RunTime: %fs"),*UEnum::GetValueAsString(NoiseSettings.source),*UEnum::GetValueAsString(NoiseSettings.type),cycles,end-start);
 		Callback(NoiseMap);
 		return;
 	}
@@ -238,7 +238,7 @@ void UNoise::GenerateMap2D(FIntVector pos, FIntVector2 mapSize, int stepSize, FN
 			Normalize(&NoiseMap,NoiseSettings.normalizeMode,NoiseSettings.type);
 		}
 		double end = FPlatformTime::Seconds();
-		UE_LOG(NoiseGenerator,Log,TEXT("UNoise::GenerateMap2D ==> %s-%s, Cycles: %d, RunTime: %fs"),*UEnum::GetValueAsString(NoiseSettings.source),*UEnum::GetValueAsString(NoiseSettings.type),cycles,end-start);
+		UE_LOG(NoiseGenerator,Log,TEXT("UNoise::GenerateMap2D ==> %s-%s, Cycles: %u, RunTime: %fs"),*UEnum::GetValueAsString(NoiseSettings.source),*UEnum::GetValueAsString(NoiseSettings.type),cycles,end-start);
 		Callback(NoiseMap);
 	});
 }
@@ -261,7 +261,7 @@ void UNoise::GenerateMap2D(FIntVector pos, FIntVector2 mapSize, int stepSize, TA
 		return;
 	}
 	
-	int cycles = 0;
+	int32 cycles = 0;
 	for (auto Layer : NoiseSettings){ if (Layer.gain > 0) { cycles += (mapSize.X * mapSize.Y/stepSize) * Layer.octaves; } }	
 	double start = FPlatformTime::Seconds();
 
@@ -302,7 +302,7 @@ void UNoise::GenerateMap2D(FIntVector pos, FIntVector2 mapSize, int stepSize, TA
 		FNoiseMap2d NoiseMap = FNoiseMap2d(pos,mapSize,stepSize);
 		GenerateMap2D(NoiseMap,&ResultData);
 		double end = FPlatformTime::Seconds();
-		UE_LOG(NoiseGenerator,Log,TEXT("UNoise::GenerateMap2D ==> %s [%d], Cycles: %d, RunTime: %f"),TEXT("Layered"),ResultData.Num(),cycles,end-start);
+		UE_LOG(NoiseGenerator,Log,TEXT("UNoise::GenerateMap2D ==> %s [%d], Cycles: %u, RunTime: %f"),TEXT("Layered"),ResultData.Num(),cycles,end-start);
 		Callback(NoiseMap);
 	});
 }
@@ -407,7 +407,7 @@ void UNoise::GenerateMap3D(FNoiseMap3d& NoiseMap, TArray<FNoiseLayer3DData>* lay
 
 void UNoise::GenerateMap3D(FIntVector pos, FIntVector mapSize, int stepSize, FNoiseSettings NoiseSettings, NoiseDensityFunction DensityFunction, TFunction<void(FNoiseMap3d NoiseMap)> Callback)
 {
-	int cycles = (mapSize.X * mapSize.Y * mapSize.Z / stepSize) * NoiseSettings.octaves;
+	int32 cycles = ((mapSize.X * mapSize.Y * mapSize.Z) / stepSize) * NoiseSettings.octaves;
 	double start = FPlatformTime::Seconds();
 	
 	//Alignment error
@@ -419,7 +419,7 @@ void UNoise::GenerateMap3D(FIntVector pos, FIntVector mapSize, int stepSize, FNo
 	if(NoiseSettings.source == CPU) {
 		FNoiseMap3d NoiseMap = GenerateMap3D(pos,mapSize,stepSize,&NoiseSettings,DensityFunction);
 		double end = FPlatformTime::Seconds();
-		UE_LOG(NoiseGenerator,Log,TEXT("UNoise::GenerateMap3D ==> %s-%s, Cycles: %d, RunTime: %fs"),*UEnum::GetValueAsString(NoiseSettings.source),*UEnum::GetValueAsString(NoiseSettings.type),cycles,end-start);
+		UE_LOG(NoiseGenerator,Log,TEXT("UNoise::GenerateMap3D ==> %s-%s, Cycles: %u, RunTime: %fs"),*UEnum::GetValueAsString(NoiseSettings.source),*UEnum::GetValueAsString(NoiseSettings.type),cycles,end-start);
 		Callback(NoiseMap);
 		return;
 	}
@@ -432,7 +432,7 @@ void UNoise::GenerateMap3D(FIntVector pos, FIntVector mapSize, int stepSize, FNo
 			Normalize(&NoiseMap,NoiseSettings.normalizeMode,NoiseSettings.type);
 		}
 		double end = FPlatformTime::Seconds();
-		UE_LOG(NoiseGenerator,Log,TEXT("UNoise::GenerateMap3D ==> %s-%s, Cycles: %d, RunTime: %fs"),*UEnum::GetValueAsString(NoiseSettings.source),*UEnum::GetValueAsString(NoiseSettings.type),cycles,end-start);
+		UE_LOG(NoiseGenerator,Log,TEXT("UNoise::GenerateMap3D ==> %s-%s, Cycles: %u, RunTime: %fs"),*UEnum::GetValueAsString(NoiseSettings.source),*UEnum::GetValueAsString(NoiseSettings.type),cycles,end-start);
 		Callback(NoiseMap);
 	});
 }
@@ -457,6 +457,8 @@ void UNoise::GenerateMap3D(FIntVector pos, FIntVector mapSize, int stepSize, TAr
 	
 	int cycles = 0;
 	for (auto Layer : NoiseSettings){ if (Layer.gain > 0) { cycles += (mapSize.X * mapSize.Y * mapSize.Z/stepSize) * Layer.octaves; } }	
+	int32 cycles = 0;
+	for (auto Layer : NoiseSettings){ if (Layer.gain > 0) { cycles += ((mapSize.X * mapSize.Y * mapSize.Z)/stepSize) * Layer.octaves; } }	
 	double start = FPlatformTime::Seconds();
 
 	//Prepare Results
@@ -496,7 +498,7 @@ void UNoise::GenerateMap3D(FIntVector pos, FIntVector mapSize, int stepSize, TAr
 		FNoiseMap3d NoiseMap = FNoiseMap3d(pos,mapSize,stepSize);
 		GenerateMap3D(NoiseMap,&ResultData);
 		double end = FPlatformTime::Seconds();
-		UE_LOG(NoiseGenerator,Log,TEXT("UNoise::GenerateMap3D ==> %s [%d], Cycles: %d, RunTime: %f"),TEXT("Layered"),ResultData.Num(),cycles,end-start);
+		UE_LOG(NoiseGenerator,Log,TEXT("UNoise::GenerateMap3D ==> %s [%d], Cycles: %u, RunTime: %f"),TEXT("Layered"),ResultData.Num(),cycles,end-start);
 		Callback(NoiseMap);
 	});
 }
