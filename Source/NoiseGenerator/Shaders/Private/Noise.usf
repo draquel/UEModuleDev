@@ -27,8 +27,10 @@ float FilterRigid(float noise)
 
 float Noise(float2 Coord, float3 Position, float3 Offset, int Type, int Filter, int NormalizeMode, int Octaves, float Frequency, float Lacunarity, float Persistence, float Scale)
 {
-    // Compute world-space sample position
-    float2 sample = (Position.xy + float2(Coord.x, Coord.y) + Offset.xy) * (1.0f / Scale);
+	float2 mapPos = float2(Position.x +Coord.x,Position.y+Coord.y) ;
+	float x = (mapPos.x + Offset.x) * (1.0f/Scale);
+	float y = (mapPos.y + Offset.y) * (1.0f/Scale);
+	float2 sample = float2(x,y);
     float noise = 0.0f;
 
     // Generate Noise - Warp

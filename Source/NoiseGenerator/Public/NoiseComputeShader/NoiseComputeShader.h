@@ -43,7 +43,7 @@ struct NOISEGENERATOR_API FNoiseComputeShaderDispatchParams
 class NOISEGENERATOR_API FNoiseComputeShaderInterface {
 public:
 
-	static FNoiseComputeShaderDispatchParams BuildParams(FVector3f Position, FVector3f Size, FNoiseSettings NoiseSettings, TEnumAsByte<NoiseMode> Mode = D2, TEnumAsByte<NoiseDensityFunction> DensityFunction = NoDensityFunction, int StepSize = 1);
+	static FNoiseComputeShaderDispatchParams BuildParams(FVector3f Position, FVector3f Size, int StepSize, FNoiseSettings NoiseSettings, TEnumAsByte<NoiseMode> Mode = D2, TEnumAsByte<NoiseDensityFunction> DensityFunction = NoDensityFunction);
 	
 	// Executes this shader on the render thread
 	static void DispatchRenderThread(
@@ -100,7 +100,7 @@ public:
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnNoiseComputeShaderLibrary_AsyncExecutionCompleted, const TArray<float>&, Values);
 
 
-UCLASS() // Change the _API to match your project
+UCLASS(BlueprintType, Blueprintable) // Change the _API to match your project
 class NOISEGENERATOR_API UNoiseComputeShaderLibrary_AsyncExecution : public UBlueprintAsyncActionBase
 {
 	GENERATED_BODY()
@@ -109,7 +109,7 @@ public:
 	
 	// Execute the actual load
 	virtual void Activate() override {
-		FNoiseComputeShaderDispatchParams Params = FNoiseComputeShaderInterface::BuildParams(Position, Size, NoiseSettings);
+		FNoiseComputeShaderDispatchParams Params = FNoiseComputeShaderInterface::BuildParams(Position, Size, StepSize, NoiseSettings);
 
 		// Dispatch the compute shader and wait until it completes
 		FNoiseComputeShaderInterface::Dispatch(Params, [this](TArray<float> OutputVals) {
@@ -117,21 +117,23 @@ public:
 		});
 	}
 	
-	UFUNCTION(BlueprintCallable, meta = (BlueprintInternalUseOnly = "true", Category = "ComputeShader", WorldContext = "WorldContextObject"))
-	static UNoiseComputeShaderLibrary_AsyncExecution* ExecuteNoiseComputeShader(UObject* WorldContextObject, FVector3f Position, FVector3f Size, FNoiseSettings NoiseSettings) {
+	UFUNCTION(BlueprintCallable, meta = (Category = "ComputeShader", WorldContext = "WorldContextObject"))
+	static UNoiseComputeShaderLibrary_AsyncExecution* ExecuteNoiseComputeShader(UObject* WorldContextObject, FVector3f Position, FVector3f Size, int StepSize, FNoiseSettings NoiseSettings) {
 		UNoiseComputeShaderLibrary_AsyncExecution* Action = NewObject<UNoiseComputeShaderLibrary_AsyncExecution>();
 		Action->Position = Position;
 		Action->Size = Size;
+		Action->StepSize = StepSize;
 		Action->NoiseSettings = NoiseSettings;
 		Action->RegisterWithGameInstance(WorldContextObject);
 
 		return Action;
 	}
 
-	static UNoiseComputeShaderLibrary_AsyncExecution* ExecuteNoiseComputeShader( FVector3f Position, FVector3f Size, FNoiseSettings NoiseSettings) {
+	static UNoiseComputeShaderLibrary_AsyncExecution* ExecuteNoiseComputeShader( FVector3f Position, FVector3f Size, int StepSize, FNoiseSettings NoiseSettings) {
 		UNoiseComputeShaderLibrary_AsyncExecution* Action = NewObject<UNoiseComputeShaderLibrary_AsyncExecution>();
 		Action->Position = Position;
 		Action->Size = Size;
+		Action->StepSize = StepSize;
 		Action->NoiseSettings = NoiseSettings;
 
 		return Action;
@@ -143,5 +145,6 @@ public:
 	FNoiseSettings NoiseSettings;
 	FVector3f Position;
 	FVector3f Size;
+	int StepSize;
 	
 };

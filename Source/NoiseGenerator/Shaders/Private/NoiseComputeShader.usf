@@ -25,22 +25,22 @@ float DomainWarp;
 [numthreads(THREADS_X, THREADS_Y, THREADS_Z)]
 void NoiseComputeShader(uint3 DispatchThreadId : SV_DispatchThreadID, uint GroupIndex : SV_GroupIndex )
 {
-	uint3 totalGridSize = uint3(Size.x,Size.y,Size.z);
-	uint totalThreads = THREADS_X * THREADS_Y * THREADS_Z;
-	uint flatIndex = DispatchThreadId.x + DispatchThreadId.y * totalGridSize.x + DispatchThreadId.z * totalGridSize.x * totalGridSize.y;
-	for (uint index = flatIndex; index < (totalGridSize.x * totalGridSize.y * totalGridSize.z); index += totalThreads){
-		uint3 coords;
-		coords.z = index / (totalGridSize.x * totalGridSize.y);
-		coords.y = (index / totalGridSize.x) % totalGridSize.y;
-		coords.x = index % totalGridSize.x;
-
-		
-		float noise = 0.0f;
-		if (Mode == 2) {
-			noise = Noise(coords*StepSize,Position,Offset,Type,Filter,NormalizeMode,Octaves,Frequency,Lacunarity,Persistence,Scale);
-		}
-		if (Mode == 3){
-			noise = Noise3(coords*StepSize,Position,Size*StepSize,Offset,Type,Filter,NormalizeMode,Octaves,Frequency,Lacunarity,Persistence,Scale,DensityFunction);
+	if (Mode == 2) {
+		float2 coords = float2(DispatchThreadId.x, DispatchThreadId.y) * StepSize;
+		float noise = Noise(coords,Position,Offset,Type,Filter,NormalizeMode,Octaves,Frequency,Lacunarity,Persistence,Scale);
+		Output[DispatchThreadId.x + DispatchThreadId.y * (Size.x)] = noise;
+	}
+	if (Mode == 3){
+		uint3 totalGridSize = uint3(Size.x,Size.y,Size.z);
+		uint totalThreads = THREADS_X * THREADS_Y * THREADS_Z;
+		uint flatIndex = DispatchThreadId.x + DispatchThreadId.y * totalGridSize.x + DispatchThreadId.z * totalGridSize.x * totalGridSize.y;
+		for (uint index = flatIndex; index < (totalGridSize.x * totalGridSize.y * totalGridSize.z); index += totalThreads){
+			uint3 coords;
+			coords.z = index / (totalGridSize.x * totalGridSize.y);
+			coords.y = (index / totalGridSize.x) % totalGridSize.y;
+			coords.x = index % totalGridSize.x;
+			float noise = Noise3(coords*StepSize,Position,Size*StepSize,Offset,Type,Filter,NormalizeMode,Octaves,Frequency,Lacunarity,Persistence,Scale,DensityFunction);
+			Output[index] = noise;
 		}
 		Output[index] = noise;
 	}

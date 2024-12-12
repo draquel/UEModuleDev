@@ -110,7 +110,7 @@ private:
 //                            ShaderType                            ShaderPath                     Shader function name    Type
 IMPLEMENT_GLOBAL_SHADER(FNoiseComputeShader, "/NoiseShaders/NoiseComputeShader.usf", "NoiseComputeShader", SF_Compute);
 
-FNoiseComputeShaderDispatchParams FNoiseComputeShaderInterface::BuildParams(FVector3f Position, FVector3f Size, FNoiseSettings NoiseSettings, TEnumAsByte<NoiseMode> NoiseMode,TEnumAsByte<NoiseDensityFunction> DensityFunction, int StepSize)
+FNoiseComputeShaderDispatchParams FNoiseComputeShaderInterface::BuildParams(FVector3f Position, FVector3f Size, int StepSize, FNoiseSettings NoiseSettings, TEnumAsByte<NoiseMode> NoiseMode,TEnumAsByte<NoiseDensityFunction> DensityFunction)
 {
 	FNoiseComputeShaderDispatchParams Params(Size.X, Size.Y, Size.Z);
 		
