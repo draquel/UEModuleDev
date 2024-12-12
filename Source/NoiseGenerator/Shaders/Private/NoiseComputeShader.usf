@@ -42,6 +42,5 @@ void NoiseComputeShader(uint3 DispatchThreadId : SV_DispatchThreadID, uint Group
 			float noise = Noise3(coords*StepSize,Position,Size*StepSize,Offset,Type,Filter,NormalizeMode,Octaves,Frequency,Lacunarity,Persistence,Scale,DensityFunction);
 			Output[index] = noise;
 		}
-		Output[index] = noise;
 	}
 }
