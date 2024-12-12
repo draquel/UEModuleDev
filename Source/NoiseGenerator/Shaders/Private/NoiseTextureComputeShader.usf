@@ -1,0 +1,26 @@
+#include "/Engine/Public/Platform.ush"
+#include "Noise.usf"
+
+RWTexture2D<float3> RenderTarget;
+
+float3 Position;
+float3 Size;
+
+float3 Offset;
+int Octaves;
+float Frequency;
+float Lacunarity;
+float Persistence;
+float Scale;
+int StepSize;
+int Filter;
+int Type;
+int NormalizeMode;
+float DomainWarp;
+
+
+[numthreads(THREADS_X, THREADS_Y, THREADS_Z)]
+void NoiseTextureComputeShader(	uint3 DispatchThreadId : SV_DispatchThreadID, uint GroupIndex : SV_GroupIndex ) {
+	float noise = Noise(float2(DispatchThreadId.x,DispatchThreadId.y)*StepSize,Position,Offset,Type,Filter,NormalizeMode,Octaves,Frequency,Lacunarity,Persistence,Scale);
+	RenderTarget[DispatchThreadId.xy] = float4(noise,0.0f,0.0f,1.0f);
+}
