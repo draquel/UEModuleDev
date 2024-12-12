@@ -3,7 +3,15 @@
 #include "CoreMinimal.h"
 #include "NoiseSettings.h"
 #include "GameFramework/Actor.h"
+#include "Engine/TextureRenderTarget2D.h"
 #include "NoiseExample.generated.h"
+
+UENUM()
+enum ENoiseExampleMode{
+	Data = 0,
+	Texture = 2
+};
+
 
 UCLASS()
 class NOISEGENERATOR_API ANoiseExample : public AActor
@@ -21,6 +29,9 @@ public:
 
 	UPROPERTY(EditAnywhere)
 	UMaterial* DefaultMaterial;
+
+	UPROPERTY(EditAnywhere)
+	TEnumAsByte<ENoiseExampleMode> Mode;
 	
 	UPROPERTY(EditAnywhere)
 	FIntVector2 TextureSize = FIntVector2(256,256);
@@ -50,6 +61,8 @@ protected:
 	virtual void BeginPlay() override;
 
 	void SetTexture(UTexture2D* Texture);
+
+	UTextureRenderTarget2D* CreateRenderTarget(FIntVector2 Size, ETextureRenderTargetFormat Format);	
 
 public:
 	virtual void Tick(float DeltaTime) override;
