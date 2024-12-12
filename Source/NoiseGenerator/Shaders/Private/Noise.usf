@@ -4,19 +4,18 @@
 #include "Simplex2D.usf"
 #include "Simplex3D.usf"
 
-struct FShaderNoiseSettings
-{
+struct ShaderNoiseSettings {
 	float3 Offset;
 	int Octaves;
 	float Frequency;
 	float Lacunarity;
 	float Persistence;
-	float Gain;
 	float Scale;
 	int Filter;
 	int Type;
 	int NormalizeMode;
 	float DomainWarp;
+	int Gain;
 };
 
 float FilterRigid(float noise)
@@ -25,27 +24,27 @@ float FilterRigid(float noise)
 	return v * v * 2 - 1; 
 }
 
-float Noise(float2 Coord, float3 Position, float3 Offset, int Type, int Filter, int NormalizeMode, int Octaves, float Frequency, float Lacunarity, float Persistence, float Scale)
+float Noise(float2 Coord, float3 Position, ShaderNoiseSettings Settings)
 {
 	float2 mapPos = float2(Position.x +Coord.x,Position.y+Coord.y) ;
-	float x = (mapPos.x + Offset.x) * (1.0f/Scale);
-	float y = (mapPos.y + Offset.y) * (1.0f/Scale);
+	float x = (mapPos.x + Settings.Offset.x) * (1.0f/Settings.Scale);
+	float y = (mapPos.y + Settings.Offset.y) * (1.0f/Settings.Scale);
 	float2 sample = float2(x,y);
     float noise = 0.0f;
 
     // Generate Noise - Warp
     float min = -1.0f;
     float max = 1.0f;
-    switch (Type) {
+    switch (Settings.Type) {
     case 1: // Perlin
-        noise = ClassicFBM(sample, Octaves, Frequency, Lacunarity, Persistence);
-        if (DomainWarp > 0) { noise = ClassicDomainWarping(sample, DomainWarp, Octaves, Frequency, Lacunarity, Persistence); }
+        noise = ClassicFBM(sample, Settings.Octaves, Settings.Frequency, Settings.Lacunarity, Settings.Persistence);
+        if (Settings.DomainWarp > 0) { noise = ClassicDomainWarping(sample, Settings.DomainWarp, Settings.Octaves, Settings.Frequency, Settings.Lacunarity, Settings.Persistence); }
         min = -0.36f;
         max = 0.375f;
         break;
     case 2: // Simplex
-        noise = snoiseFBM(sample, Octaves, Frequency, Lacunarity, Persistence);
-        if (DomainWarp > 0) { noise = snoiseDomainWarping(sample, DomainWarp, Octaves, Frequency, Lacunarity, Persistence); }
+        noise = snoiseFBM(sample, Settings.Octaves, Settings.Frequency, Settings.Lacunarity, Settings.Persistence);
+        if (Settings.DomainWarp > 0) { noise = snoiseDomainWarping(sample, Settings.DomainWarp, Settings.Octaves, Settings.Frequency, Settings.Lacunarity, Settings.Persistence); }
         min = -0.625f;
         max = 0.525f;
         break;
@@ -54,7 +53,7 @@ float Noise(float2 Coord, float3 Position, float3 Offset, int Type, int Filter, 
     }
 
     // Mutations - Filters / Normalization
-    switch (Filter) {
+    switch (Settings.Filter) {
     case 1: // Rigid
         noise = FilterRigid(noise);
         break;
@@ -62,7 +61,7 @@ float Noise(float2 Coord, float3 Position, float3 Offset, int Type, int Filter, 
         break;
     }
 
-    switch (NormalizeMode) {
+    switch (Settings.NormalizeMode) {
     case 3: // Global
         noise = (1 - (-1)) / (max - min) * (noise - min) + (-1);
         break;
@@ -76,28 +75,28 @@ float Noise(float2 Coord, float3 Position, float3 Offset, int Type, int Filter, 
     return noise;
 }
 
-float Noise3(uint3 Coord, float3 Position, float3 Size, float3 Offset, int Type, int Filter, int NormalizeMode, int Octaves, float Frequency, float Lacunarity, float Persistence, float Scale,int DensityFunction){
+float Noise3(uint3 Coord, float3 Position, float3 Size, ShaderNoiseSettings Settings, int DensityFunction){
 	float3 mapPos = float3(Position.x +Coord.x,Position.y+Coord.y,Position.z+Coord.z) ;
-	float x = (mapPos.x + Offset.x) * (1.0f/Scale);
-	float y = (mapPos.y + Offset.y) * (1.0f/Scale);
-	float z = (mapPos.z + Offset.z) * (1.0f/Scale);
+	float x = (mapPos.x + Settings.Offset.x) * (1.0f/Settings.Scale);
+	float y = (mapPos.y + Settings.Offset.y) * (1.0f/Settings.Scale);
+	float z = (mapPos.z + Settings.Offset.z) * (1.0f/Settings.Scale);
 	float3 sample = float3(x,y,z);
 	float noise = 0.0f;
 
 	//Generate Noise - Warp
 	float min = -1.0f;
 	float max = 1.0f;
-	switch (Type){
+	switch (Settings.Type){
 	case 1: //Perlin
 		switch (DensityFunction){
 			default:
-				noise = ClassicFBM(sample, Octaves, Frequency, Lacunarity, Persistence);
+				noise = ClassicFBM(sample, Settings.Octaves, Settings.Frequency, Settings.Lacunarity, Settings.Persistence);
 				break;
 			case 1:
-				noise = mapPos.z + ClassicFBM(sample, Octaves, Frequency, Lacunarity, Persistence)*Size.z; 
+				noise = mapPos.z + ClassicFBM(sample, Settings.Octaves, Settings.Frequency, Settings.Lacunarity, Settings.Persistence)*Size.z; 
 				break;
 			case 2:
-				noise = Size.x - length(mapPos) + ClassicFBM(sample, Octaves, Frequency, Lacunarity, Persistence);
+				noise = Size.x - length(mapPos) + ClassicFBM(sample, Settings.Octaves, Settings.Frequency, Settings.Lacunarity, Settings.Persistence);
 				break;
 		}
 		// if (DomainWarp > 0){ noise = ClassicDomainWarping(sample,DomainWarp, Octaves, Frequency, Lacunarity, Persistence); }
@@ -107,13 +106,13 @@ float Noise3(uint3 Coord, float3 Position, float3 Size, float3 Offset, int Type,
 	case 2: //Simplex
 		switch (DensityFunction){
 		default:
-			noise = SimplexFBM(sample, Octaves, Frequency, Lacunarity, Persistence);
+			noise = SimplexFBM(sample, Settings.Octaves, Settings.Frequency, Settings.Lacunarity, Settings.Persistence);
 			break;
 		case 1:
-			noise = mapPos.z + SimplexFBM(sample, Octaves, Frequency, Lacunarity, Persistence)*Size.z; 
+			noise = mapPos.z + SimplexFBM(sample, Settings.Octaves, Settings.Frequency, Settings.Lacunarity, Settings.Persistence)*Size.z; 
 			break;
 		case 2:
-			noise = 500 - length(mapPos) + SimplexFBM(sample, Octaves, Frequency, Lacunarity, Persistence);
+			noise = 500 - length(mapPos) + SimplexFBM(sample, Settings.Octaves, Settings.Frequency, Settings.Lacunarity, Settings.Persistence);
 			break;
 		}
 		// if (DomainWarp > 0){ noise = snoiseDomainWarping(sample,DomainWarp, Octaves, Frequency, Lacunarity, Persistence); }
@@ -125,7 +124,7 @@ float Noise3(uint3 Coord, float3 Position, float3 Size, float3 Offset, int Type,
 	}
 
 	//Mutations - Filters / Normalization
-	switch (Filter){
+	switch (Settings.Filter){
 	case 1: // Rigid 
 		noise = FilterRigid(noise);
 		break;
@@ -133,7 +132,7 @@ float Noise3(uint3 Coord, float3 Position, float3 Size, float3 Offset, int Type,
 		break;
 	}
     
-	switch (NormalizeMode) {
+	switch (Settings.NormalizeMode) {
 	case 3://Global
 		noise = (1-(-1))/(max-min)*(noise-min)+(-1);
 		break;

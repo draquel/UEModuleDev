@@ -15,20 +15,21 @@ struct NOISEGENERATOR_API FNoiseTextureComputeShaderDispatchParams
 
 	FVector3f Position;
 	FVector3f Size;
-
-	// int Mode;
-	FVector3f Offset;
-	int Octaves;
-	float Frequency;
-	float Lacunarity;
-	float Persistence;	
-	float Scale;
 	int StepSize;
-	int Filter;
-	int Type;
-	// int DensityFunction;
-	int NormalizeMode;
-	float DomainWarp;
+
+	TArray<FShaderNoiseSettings> NoiseSettings;
+	int SettingsSize;
+	
+	// FVector3f Offset;
+	// int Octaves;
+	// float Frequency;
+	// float Lacunarity;
+	// float Persistence;	
+	// float Scale;
+	// int Filter;
+	// int Type;
+	// int NormalizeMode;
+	// float DomainWarp;
 	
 	FNoiseTextureComputeShaderDispatchParams(int x, int y, int z)
 		: X(x)
@@ -41,7 +42,7 @@ struct NOISEGENERATOR_API FNoiseTextureComputeShaderDispatchParams
 // This is a public interface that we define so outside code can invoke our compute shader.
 class NOISEGENERATOR_API FNoiseTextureComputeShaderInterface {
 public:
-	static FNoiseTextureComputeShaderDispatchParams BuildParams(UTextureRenderTarget2D* RenderTarget, FVector3f Position, FVector3f Size, int StepSize, FNoiseSettings NoiseSettings);
+	static FNoiseTextureComputeShaderDispatchParams BuildParams(UTextureRenderTarget2D* RenderTarget, FVector3f Position, FVector3f Size, int StepSize, TArray<FNoiseSettings> NoiseSettings);
 	// Executes this shader on the render thread
 	static void DispatchRenderThread(
 		FRHICommandListImmediate& RHICmdList,
@@ -90,7 +91,7 @@ class NOISEGENERATOR_API UNoiseTextureComputeShaderLibrary_AsyncExecution :  pub
 public:
 	
 	UFUNCTION(BlueprintCallable)
-	static void ExecuteNoiseTextureComputeShader(UTextureRenderTarget2D* RT, FVector3f Position, FVector3f Size, int StepSize, FNoiseSettings NoiseSettings)
+	static void ExecuteNoiseTextureComputeShader(UTextureRenderTarget2D* RT, FVector3f Position, FVector3f Size, int StepSize, TArray<FNoiseSettings> NoiseSettings)
 	{
 		FNoiseTextureComputeShaderDispatchParams Params = FNoiseTextureComputeShaderInterface::BuildParams(RT,Position,Size,StepSize,NoiseSettings);
 		FNoiseTextureComputeShaderInterface::Dispatch(Params);

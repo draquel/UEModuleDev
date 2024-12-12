@@ -53,22 +53,15 @@ public:
 		// SHADER_PARAMETER_RDG_BUFFER_SRV(Buffer<int>, Input)
 		SHADER_PARAMETER_RDG_BUFFER_UAV(RWBuffer<float>, Output)
 
+		SHADER_PARAMETER_RDG_BUFFER_SRV(StructuredBuffer<FShaderNoiseSettings>, NoiseSettings)
+		SHADER_PARAMETER(int, SettingsSize)
+
 		SHADER_PARAMETER(FVector3f, Position)
 		SHADER_PARAMETER(FVector3f, Size)
-		SHADER_PARAMETER(FVector3f, Offset)
-		SHADER_PARAMETER(int, Mode)
-		SHADER_PARAMETER(int, Octaves)
-		SHADER_PARAMETER(float, Frequency)
-		SHADER_PARAMETER(float, Lacunarity)
-		SHADER_PARAMETER(float, Persistence)
-		SHADER_PARAMETER(float, Scale)
 		SHADER_PARAMETER(int, StepSize)
-		SHADER_PARAMETER(int, Filter)
-		SHADER_PARAMETER(int, Type)
+		SHADER_PARAMETER(int, Mode)
 		SHADER_PARAMETER(int, DensityFunction)
-		SHADER_PARAMETER(int, NormalizeMode)
-		SHADER_PARAMETER(float, DomainWarp)
-
+	
 	END_SHADER_PARAMETER_STRUCT()
 
 public:
@@ -110,26 +103,21 @@ private:
 //                            ShaderType                            ShaderPath                     Shader function name    Type
 IMPLEMENT_GLOBAL_SHADER(FNoiseComputeShader, "/NoiseShaders/NoiseComputeShader.usf", "NoiseComputeShader", SF_Compute);
 
-FNoiseComputeShaderDispatchParams FNoiseComputeShaderInterface::BuildParams(FVector3f Position, FVector3f Size, int StepSize, FNoiseSettings NoiseSettings, TEnumAsByte<NoiseMode> NoiseMode,TEnumAsByte<NoiseDensityFunction> DensityFunction)
+FNoiseComputeShaderDispatchParams FNoiseComputeShaderInterface::BuildParams(FVector3f Position, FVector3f Size, int StepSize, TArray<FNoiseSettings> NoiseSettings, TEnumAsByte<NoiseMode> NoiseMode,TEnumAsByte<NoiseDensityFunction> DensityFunction)
 {
+	TArray<FShaderNoiseSettings> ShaderNoiseSettings;
+	for (int i = 0; i < NoiseSettings.Num(); i++) ShaderNoiseSettings.Add(FShaderNoiseSettings(&NoiseSettings[i]));
+	
 	FNoiseComputeShaderDispatchParams Params(Size.X, Size.Y, Size.Z);
 		
 	Params.Position = Position;
 	Params.Size = Size;
-	Params.Offset = (FVector3f)NoiseSettings.offset;
-	Params.Mode = NoiseMode.GetValue();
-	Params.Octaves = NoiseSettings.octaves;
-	Params.Frequency = NoiseSettings.frequency;
-	Params.Lacunarity = NoiseSettings.lacunarity;
-	Params.Persistence = NoiseSettings.persistence;
-	Params.Scale = NoiseSettings.scale;
 	Params.StepSize = StepSize;
-	Params.Filter = NoiseSettings.filter.GetValue();
+	Params.Mode = NoiseMode.GetValue();
 	Params.DensityFunction = DensityFunction.GetValue();
-	Params.Type = NoiseSettings.type.GetValue();
-	Params.NormalizeMode = NoiseSettings.normalizeMode.GetValue();
-	Params.DomainWarp = NoiseSettings.domainWarping ? NoiseSettings.domainWarpingScale : 0;
-
+	Params.NoiseSettings = ShaderNoiseSettings;
+	Params.SettingsSize = ShaderNoiseSettings.Num();
+	
 	return Params;
 }
 
@@ -153,19 +141,21 @@ void FNoiseComputeShaderInterface::DispatchRenderThread(FRHICommandListImmediate
 
 			PassParameters->Position = Params.Position;
 			PassParameters->Size = Params.Size;
-			PassParameters->Offset = Params.Offset;
-			PassParameters->Mode = Params.Mode;
-			PassParameters->Octaves = Params.Octaves;
-			PassParameters->Frequency = Params.Frequency;
-			PassParameters->Lacunarity = Params.Lacunarity;
-			PassParameters->Persistence = Params.Persistence;
-			PassParameters->Scale = Params.Scale;
 			PassParameters->StepSize = Params.StepSize;
-			PassParameters->Filter = Params.Filter;
-			PassParameters->Type = Params.Type;
+			PassParameters->Mode = Params.Mode;
 			PassParameters->DensityFunction = Params.DensityFunction;
-			PassParameters->NormalizeMode = Params.NormalizeMode;
-			PassParameters->DomainWarp = Params.DomainWarp;
+			PassParameters->SettingsSize = Params.SettingsSize;
+
+			FRDGBufferRef NoiseSettingsBuffer = CreateStructuredBuffer(
+				GraphBuilder,
+				TEXT("NoiseSettingsBuffer"),
+				sizeof(FShaderNoiseSettings),
+				Params.SettingsSize,
+				Params.NoiseSettings.GetData(),
+				Params.SettingsSize * sizeof(FShaderNoiseSettings)
+			);
+			FRDGBufferSRVRef NoiseSettingsBufferSRV = GraphBuilder.CreateSRV(NoiseSettingsBuffer);
+			PassParameters->NoiseSettings = NoiseSettingsBufferSRV;
 			
 			int NumOutputs = Params.Size.X*Params.Size.Y*Params.Size.Z;
 			FRDGBufferRef OutputBuffer = GraphBuilder.CreateBuffer(FRDGBufferDesc::CreateBufferDesc(sizeof(float), NumOutputs),TEXT("OutputBuffer"));
@@ -214,85 +204,3 @@ void FNoiseComputeShaderInterface::DispatchRenderThread(FRHICommandListImmediate
 
 	GraphBuilder.Execute();
 }
-
-void FNoiseComputeShaderInterface::DispatchMyComputeShader(FRDGBuilder& GraphBuilder, FRDGBufferRef OutputBuffer, FNoiseComputeShaderDispatchParams Params,int index)
-{
-	FNoiseComputeShader::FParameters* PassParameters = GraphBuilder.AllocParameters<FNoiseComputeShader::FParameters>();
-	PassParameters->Position = Params.Position;
-	PassParameters->Size = Params.Size;
-	PassParameters->Offset = Params.Offset;
-	PassParameters->Mode = Params.Mode;
-	PassParameters->Octaves = Params.Octaves;
-	PassParameters->Frequency = Params.Frequency;
-	PassParameters->Lacunarity = Params.Lacunarity;
-	PassParameters->Persistence = Params.Persistence;
-	PassParameters->Scale = Params.Scale;
-	PassParameters->StepSize = Params.StepSize;
-	PassParameters->Filter = Params.Filter;
-	PassParameters->Type = Params.Type;
-	PassParameters->DensityFunction = Params.DensityFunction;
-	PassParameters->NormalizeMode = Params.NormalizeMode;
-	PassParameters->DomainWarp = Params.DomainWarp;
-	PassParameters->Output = GraphBuilder.CreateUAV(FRDGBufferUAVDesc(OutputBuffer, PF_R32_FLOAT));
-	
-	typename FNoiseComputeShader::FPermutationDomain PermutationVector;
-	PermutationVector.Set<FNoiseComputeShader::FNoiseComputeShader_Perm_TEST>(1+index);
-	TShaderMapRef<FNoiseComputeShader> ComputeShader(GetGlobalShaderMap(GMaxRHIFeatureLevel),PermutationVector);
-	FComputeShaderUtils::AddPass(GraphBuilder, RDG_EVENT_NAME("MyComputeShaderPass"), ComputeShader, PassParameters, FIntVector(Params.X, Params.Y, Params.Z));
-}
-
-void FNoiseComputeShaderInterface::ExecuteMultipleDispatchesAndNotify(FRHICommandListImmediate& RHICmdList, TArray<FNoiseComputeShaderDispatchParams> Params, TFunction<void(TArray<TArray<float>> OutputVals)> AsyncCallback)
-{
-    FRDGBuilder GraphBuilder(RHICmdList);
-    TArray<FRDGBufferRef> OutputBuffers;
-    TArray<FRHIGPUBufferReadback*> GPUBufferReadbacks;
-
-    // Create buffers and dispatch compute shaders
-    for (int32 i = 0; i < Params.Num(); ++i) {
-        int NumOutputs = Params[i].Size.X * Params[i].Size.Y * Params[i].Size.Z;
-        FRDGBufferRef OutputBuffer = GraphBuilder.CreateBuffer(FRDGBufferDesc::CreateBufferDesc(sizeof(float), NumOutputs), TEXT("OutputBuffer"));
-        OutputBuffers.Add(OutputBuffer);
-
-        DispatchMyComputeShader(GraphBuilder, OutputBuffer, Params[i], i);
-
-        FRHIGPUBufferReadback* GPUBufferReadback = new FRHIGPUBufferReadback(TEXT("ExecuteNoiseComputeShaderOutput"));
-        GPUBufferReadbacks.Add(GPUBufferReadback);
-        AddEnqueueCopyPass(GraphBuilder, GPUBufferReadback, OutputBuffer, 0u);
-    }
-
-    // Execute the graph
-    GraphBuilder.Execute();
-
-    // Flush the GPU commands and submit them for execution
-    RHICmdList.SubmitCommandsAndFlushGPU();
-
-    // After graph execution, perform GPU buffer readback on the rendering thread
-    AsyncTask(ENamedThreads::ActualRenderingThread, [GPUBufferReadbacks, Params, AsyncCallback]() {
-        TArray<TArray<float>> OutputData;
-        OutputData.SetNum(Params.Num());
-
-        for (int32 i = 0; i < GPUBufferReadbacks.Num(); ++i) {
-            FRHIGPUBufferReadback* GPUBufferReadback = GPUBufferReadbacks[i];
-            if (GPUBufferReadback->IsReady()) {
-                int NumOutputs = Params[i].Size.X * Params[i].Size.Y * Params[i].Size.Z;
-                float* Buffer = (float*)GPUBufferReadback->Lock(NumOutputs);
-                TArray<float> OutputVals;
-                OutputVals.SetNum(NumOutputs);
-                FMemory::Memcpy(OutputVals.GetData(), Buffer, NumOutputs * sizeof(float));
-                GPUBufferReadback->Unlock();
-
-                OutputData[i] = OutputVals;
-            } else {
-                UE_LOG(NoiseGenerator, Warning, TEXT("GPU Buffer Readback is not ready for index %d."), i);
-            }
-
-            delete GPUBufferReadback;
-        }
-
-        // Call the callback on the game thread with the results
-        AsyncTask(ENamedThreads::GameThread, [AsyncCallback, OutputData]() {
-            AsyncCallback(OutputData);
-        });
-    });
-}
-

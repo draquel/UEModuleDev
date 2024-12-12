@@ -2,45 +2,53 @@
 #include "Noise.usf"
 
 RWBuffer<float> Output;
+StructuredBuffer<ShaderNoiseSettings> NoiseSettings;
+int SettingsSize;
 
 float3 Position;
 float3 Size;
+int StepSize;
 
 int Mode;
-
-float3 Offset;
-int Octaves;
-float Frequency;
-float Lacunarity;
-float Persistence;
-float Scale;
-int StepSize;
-int Filter;
-int Type;
 int DensityFunction;
-int NormalizeMode;
-float DomainWarp;
 
 // Main 2D compute shader function
 [numthreads(THREADS_X, THREADS_Y, THREADS_Z)]
 void NoiseComputeShader(uint3 DispatchThreadId : SV_DispatchThreadID, uint GroupIndex : SV_GroupIndex )
 {
-	if (Mode == 2) {
-		float2 coords = float2(DispatchThreadId.x, DispatchThreadId.y) * StepSize;
-		float noise = Noise(coords,Position,Offset,Type,Filter,NormalizeMode,Octaves,Frequency,Lacunarity,Persistence,Scale);
-		Output[DispatchThreadId.x + DispatchThreadId.y * (Size.x)] = noise;
-	}
-	if (Mode == 3){
-		uint3 totalGridSize = uint3(Size.x,Size.y,Size.z);
-		uint totalThreads = THREADS_X * THREADS_Y * THREADS_Z;
-		uint flatIndex = DispatchThreadId.x + DispatchThreadId.y * totalGridSize.x + DispatchThreadId.z * totalGridSize.x * totalGridSize.y;
-		for (uint index = flatIndex; index < (totalGridSize.x * totalGridSize.y * totalGridSize.z); index += totalThreads){
-			uint3 coords;
-			coords.z = index / (totalGridSize.x * totalGridSize.y);
-			coords.y = (index / totalGridSize.x) % totalGridSize.y;
-			coords.x = index % totalGridSize.x;
-			float noise = Noise3(coords*StepSize,Position,Size*StepSize,Offset,Type,Filter,NormalizeMode,Octaves,Frequency,Lacunarity,Persistence,Scale,DensityFunction);
-			Output[index] = noise;
+		if (Mode == 2) {
+			if (DispatchThreadId.x >= Size.x || DispatchThreadId.y >= Size.y || DispatchThreadId.z >= Size.z) return;
+			float noise = 0;
+			float gain = 0;
+			for (int i = 0; i < SettingsSize; i++)	{
+				ShaderNoiseSettings Settings = NoiseSettings[i];
+				gain += Settings.Gain;
+				float2 coords = float2(DispatchThreadId.x, DispatchThreadId.y) * StepSize;
+				noise += Noise(coords,Position,Settings) * Settings.Gain;
+			}
+			noise /= gain;
+			Output[DispatchThreadId.x + DispatchThreadId.y * (Size.x)] = noise;
 		}
-	}
+		if (Mode == 3){
+			uint3 totalGridSize = uint3(Size.x,Size.y,Size.z);
+			uint totalThreads = THREADS_X * THREADS_Y * THREADS_Z;
+			uint flatIndex = DispatchThreadId.x + DispatchThreadId.y * totalGridSize.x + DispatchThreadId.z * totalGridSize.x * totalGridSize.y;
+			for (uint index = flatIndex; index < (totalGridSize.x * totalGridSize.y * totalGridSize.z); index += totalThreads){
+				uint3 coords;
+				coords.z = index / (totalGridSize.x * totalGridSize.y);
+				coords.y = (index / totalGridSize.x) % totalGridSize.y;
+				coords.x = index % totalGridSize.x;
+				float noise = 0;
+				float gain = 0;
+				for (int i = 0; i < SettingsSize; i++) {
+					ShaderNoiseSettings Settings = NoiseSettings[i];
+					gain += Settings.Gain;
+					noise += Noise3(coords*StepSize,Position,Size*StepSize,Settings,DensityFunction) * Settings.Gain;
+				}
+				noise /= gain;
+				Output[index] = noise;
+			}
+		}	
+	
+	
 }

@@ -175,3 +175,62 @@ struct FNoiseSettings
 		return false;
 	}
 };
+
+USTRUCT(BlueprintType)
+struct FShaderNoiseSettings
+{
+	GENERATED_BODY()
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	FVector3f Offset;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	int Octaves;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	float Frequency;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	float Lacunarity;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	float Persistence;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	float Scale;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	int Filter;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	int Type;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	int NormalizeMode;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	float DomainWarp;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	float Gain;
+
+	FShaderNoiseSettings()
+	{
+		Type = Simplex;
+		Filter = NoFilter;
+		NormalizeMode = NoNormalization;
+		Gain = 1.0f;
+		Scale = 5000.0f;
+		Offset = FVector3f(1230, 3210, 3201);
+		Octaves = 3;
+		Lacunarity = 1.8f;
+		Persistence = 1;
+		Frequency = 1;
+		DomainWarp = 1.0f;
+	}
+	
+	FShaderNoiseSettings(FNoiseSettings* NoiseSettings)
+	{
+		Offset = (FVector3f)NoiseSettings->offset;
+		Octaves = NoiseSettings->octaves;
+		Frequency = NoiseSettings->frequency;
+		Lacunarity = NoiseSettings->lacunarity;
+		Persistence = NoiseSettings->persistence;
+		Scale = NoiseSettings->scale;
+		Filter = NoiseSettings->filter.GetValue();
+		Type = NoiseSettings->type.GetValue();
+		NormalizeMode = NoiseSettings->normalizeMode.GetValue();
+		DomainWarp = NoiseSettings->domainWarping ? NoiseSettings->domainWarpingScale : 0;
+		Gain = NoiseSettings->gain;
+	}
+};

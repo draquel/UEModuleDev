@@ -8,6 +8,7 @@
 #include "GlobalShader.h"
 #include "NoiseSettings.h"
 #include "RHIGPUReadback.h"
+#include "SceneTexturesConfig.h"
 
 DECLARE_STATS_GROUP(TEXT("NoiseTextureComputeShader"), STATGROUP_NoiseTextureComputeShader, STATCAT_Advanced);
 DECLARE_CYCLE_STAT(TEXT("NoiseTextureComputeShader Execute"), STAT_NoiseTextureComputeShader_Execute, STATGROUP_NoiseTextureComputeShader);
@@ -52,22 +53,26 @@ public:
 		
 		SHADER_PARAMETER_RDG_TEXTURE_UAV(RWTexture2D, RenderTarget)
 
-	//R 
+		SHADER_PARAMETER_RDG_BUFFER_SRV(StructuredBuffer<FShaderNoiseSettings>, NoiseSettings)
+
+		// SHADER_PARAMETER(int, Mode)
+		// SHADER_PARAMETER(int, DensityFunction)
+	
 		SHADER_PARAMETER(FVector3f, Position)
 		SHADER_PARAMETER(FVector3f, Size)
-		SHADER_PARAMETER(FVector3f, Offset)
-		SHADER_PARAMETER(int, Mode)
-		SHADER_PARAMETER(int, Octaves)
-		SHADER_PARAMETER(float, Frequency)
-		SHADER_PARAMETER(float, Lacunarity)
-		SHADER_PARAMETER(float, Persistence)
-		SHADER_PARAMETER(float, Scale)
 		SHADER_PARAMETER(int, StepSize)
-		SHADER_PARAMETER(int, Filter)
-		SHADER_PARAMETER(int, Type)
-		SHADER_PARAMETER(int, DensityFunction)
-		SHADER_PARAMETER(int, NormalizeMode)
-		SHADER_PARAMETER(float, DomainWarp)	
+		SHADER_PARAMETER(int, SettingsSize)
+	
+		// SHADER_PARAMETER(FVector3f, Offset)
+		// SHADER_PARAMETER(int, Octaves)
+		// SHADER_PARAMETER(float, Frequency)
+		// SHADER_PARAMETER(float, Lacunarity)
+		// SHADER_PARAMETER(float, Persistence)
+		// SHADER_PARAMETER(float, Scale)
+		// SHADER_PARAMETER(int, Filter)
+		// SHADER_PARAMETER(int, Type)
+		// SHADER_PARAMETER(int, NormalizeMode)
+		// SHADER_PARAMETER(float, DomainWarp)	
 
 	END_SHADER_PARAMETER_STRUCT()
 
@@ -110,25 +115,20 @@ private:
 //                            ShaderType                            ShaderPath                     Shader function name    Type
 IMPLEMENT_GLOBAL_SHADER(FNoiseTextureComputeShader, "/NoiseShaders/NoiseTextureComputeShader.usf", "NoiseTextureComputeShader", SF_Compute);
 
-FNoiseTextureComputeShaderDispatchParams FNoiseTextureComputeShaderInterface::BuildParams(UTextureRenderTarget2D* RenderTarget, FVector3f Position, FVector3f Size, int StepSize, FNoiseSettings NoiseSettings)
+FNoiseTextureComputeShaderDispatchParams FNoiseTextureComputeShaderInterface::BuildParams(UTextureRenderTarget2D* RenderTarget, FVector3f Position, FVector3f Size, int StepSize, TArray<FNoiseSettings> NoiseSettings)
 {
+	TArray<FShaderNoiseSettings> ShaderNoiseSettings;
+	for (int i = 0; i < NoiseSettings.Num(); i++) ShaderNoiseSettings.Add(FShaderNoiseSettings(&NoiseSettings[i]));
+	
 	FNoiseTextureComputeShaderDispatchParams Params(Size.X, Size.Y, Size.Z);
 		
 	Params.RenderTarget = RenderTarget->GameThread_GetRenderTargetResource();
 	Params.Position = Position;
 	Params.Size = Size;
-	Params.Offset = (FVector3f)NoiseSettings.offset;
-	Params.Octaves = NoiseSettings.octaves;
-	Params.Frequency = NoiseSettings.frequency;
-	Params.Lacunarity = NoiseSettings.lacunarity;
-	Params.Persistence = NoiseSettings.persistence;
-	Params.Scale = NoiseSettings.scale;
 	Params.StepSize = StepSize;
-	Params.Filter = NoiseSettings.filter.GetValue();
-	Params.Type = NoiseSettings.type.GetValue();
-	Params.NormalizeMode = NoiseSettings.normalizeMode.GetValue();
-	Params.DomainWarp = NoiseSettings.domainWarping ? NoiseSettings.domainWarpingScale : 0;
-
+	Params.NoiseSettings = ShaderNoiseSettings;
+	Params.SettingsSize = ShaderNoiseSettings.Num();
+	
 	return Params;
 }
 
@@ -161,18 +161,20 @@ void FNoiseTextureComputeShaderInterface::DispatchRenderThread(FRHICommandListIm
 			PassParameters->RenderTarget = GraphBuilder.CreateUAV(TmpTexture);
 			PassParameters->Position = Params.Position;
 			PassParameters->Size = Params.Size;
-			PassParameters->Offset = Params.Offset;
-			PassParameters->Octaves = Params.Octaves;
-			PassParameters->Frequency = Params.Frequency;
-			PassParameters->Lacunarity = Params.Lacunarity;
-			PassParameters->Persistence = Params.Persistence;
-			PassParameters->Scale = Params.Scale;
 			PassParameters->StepSize = Params.StepSize;
-			PassParameters->Filter = Params.Filter;
-			PassParameters->Type = Params.Type;
-			PassParameters->NormalizeMode = Params.NormalizeMode;
-			PassParameters->DomainWarp = Params.DomainWarp;	
+			PassParameters->SettingsSize = Params.SettingsSize;
 
+			FRDGBufferRef NoiseSettingsBuffer = CreateStructuredBuffer(
+				GraphBuilder,
+				TEXT("NoiseSettingsBuffer"),
+				sizeof(FShaderNoiseSettings),
+				Params.SettingsSize,
+				Params.NoiseSettings.GetData(),
+				Params.SettingsSize * sizeof(FShaderNoiseSettings)
+			);
+			FRDGBufferSRVRef NoiseSettingsBufferSRV = GraphBuilder.CreateSRV(NoiseSettingsBuffer);
+			PassParameters->NoiseSettings = NoiseSettingsBufferSRV;
+			
 			auto GroupCount = FComputeShaderUtils::GetGroupCount(FIntVector(Params.X, Params.Y, Params.Z), FComputeShaderUtils::kGolden2DGroupSize);
 			GraphBuilder.AddPass(
 				RDG_EVENT_NAME("ExecuteNoiseTextureComputeShader"),

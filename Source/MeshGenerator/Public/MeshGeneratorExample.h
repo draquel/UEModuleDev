@@ -74,6 +74,7 @@ protected:
 
 	UFUNCTION(CallInEditor,meta=(Category="MeshGeneratorExample"))
 	void Generate();
+	void Regenerate();
 
 	void UpdateMesh(FMeshData* Data);
 	

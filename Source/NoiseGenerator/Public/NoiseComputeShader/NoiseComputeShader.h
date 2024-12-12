@@ -16,21 +16,14 @@ struct NOISEGENERATOR_API FNoiseComputeShaderDispatchParams
 
 	FVector3f Position;
 	FVector3f Size;
+	int StepSize;
 
 	int Mode;
-	FVector3f Offset;
-	int Octaves;
-	float Frequency;
-	float Lacunarity;
-	float Persistence;	
-	float Scale;
-	int StepSize;
-	int Filter;
-	int Type;
 	int DensityFunction;
-	int NormalizeMode;
-	float DomainWarp;
 
+	TArray<FShaderNoiseSettings> NoiseSettings;
+	int SettingsSize;
+	
 	FNoiseComputeShaderDispatchParams(int x, int y, int z)
 		: X(x)
 		, Y(y)
@@ -43,7 +36,8 @@ struct NOISEGENERATOR_API FNoiseComputeShaderDispatchParams
 class NOISEGENERATOR_API FNoiseComputeShaderInterface {
 public:
 
-	static FNoiseComputeShaderDispatchParams BuildParams(FVector3f Position, FVector3f Size, int StepSize, FNoiseSettings NoiseSettings, TEnumAsByte<NoiseMode> Mode = D2, TEnumAsByte<NoiseDensityFunction> DensityFunction = NoDensityFunction);
+	static FNoiseComputeShaderDispatchParams BuildParams(FVector3f Position, FVector3f Size, int StepSize, TArray<FNoiseSettings> NoiseSettings, TEnumAsByte<NoiseMode>
+	                                                     NoiseMode = D2, TEnumAsByte<NoiseDensityFunction> DensityFunction = NoDensityFunction);
 	
 	// Executes this shader on the render thread
 	static void DispatchRenderThread(
@@ -52,8 +46,8 @@ public:
 		TFunction<void(TArray<float> OutputVals)> AsyncCallback
 	);
 
-	static void ExecuteMultipleDispatchesAndNotify(FRHICommandListImmediate& RHICmdList, TArray<FNoiseComputeShaderDispatchParams> Params, TFunction<void(TArray<TArray<float>> OutputVals)> AsyncCallback);
-	static void DispatchMyComputeShader(FRDGBuilder& GraphBuilder, FRDGBufferRef OutputBuffer, FNoiseComputeShaderDispatchParams Params,int index);
+	// static void ExecuteMultipleDispatchesAndNotify(FRHICommandListImmediate& RHICmdList, TArray<FNoiseComputeShaderDispatchParams> Params, TFunction<void(TArray<TArray<float>> OutputVals)> AsyncCallback);
+	// static void DispatchMyComputeShader(FRDGBuilder& GraphBuilder, FRDGBufferRef OutputBuffer, FNoiseComputeShaderDispatchParams Params,int index);
 
 	// Executes this shader on the render thread from the game thread via EnqueueRenderThreadCommand
 	static void DispatchGameThread(
@@ -80,20 +74,6 @@ public:
 			DispatchGameThread(Params, AsyncCallback);
 		}
 	}
-
-	static void LayeredDispatch(TArray<FNoiseComputeShaderDispatchParams> Params, TFunction<void(TArray<TArray<float>> OutputVals)> AsyncCallback)
-	{
-		if (IsInRenderingThread()){
-			ExecuteMultipleDispatchesAndNotify(GetImmediateCommandList_ForRenderCommand(), Params, AsyncCallback);	
-		}else{
-			ENQUEUE_RENDER_COMMAND(SceneDrawCompletion)(
-			[Params, AsyncCallback](FRHICommandListImmediate& RHICmdList)
-			{
-				ExecuteMultipleDispatchesAndNotify(RHICmdList, Params, AsyncCallback);
-			});
-		}
-		
-	}
 };
 
 
@@ -118,7 +98,7 @@ public:
 	}
 	
 	UFUNCTION(BlueprintCallable, meta = (Category = "ComputeShader", WorldContext = "WorldContextObject"))
-	static UNoiseComputeShaderLibrary_AsyncExecution* ExecuteNoiseComputeShader(UObject* WorldContextObject, FVector3f Position, FVector3f Size, int StepSize, FNoiseSettings NoiseSettings) {
+	static UNoiseComputeShaderLibrary_AsyncExecution* ExecuteNoiseComputeShader(UObject* WorldContextObject, FVector3f Position, FVector3f Size, int StepSize,TArray<FNoiseSettings> NoiseSettings) {
 		UNoiseComputeShaderLibrary_AsyncExecution* Action = NewObject<UNoiseComputeShaderLibrary_AsyncExecution>();
 		Action->Position = Position;
 		Action->Size = Size;
@@ -129,20 +109,10 @@ public:
 		return Action;
 	}
 
-	static UNoiseComputeShaderLibrary_AsyncExecution* ExecuteNoiseComputeShader( FVector3f Position, FVector3f Size, int StepSize, FNoiseSettings NoiseSettings) {
-		UNoiseComputeShaderLibrary_AsyncExecution* Action = NewObject<UNoiseComputeShaderLibrary_AsyncExecution>();
-		Action->Position = Position;
-		Action->Size = Size;
-		Action->StepSize = StepSize;
-		Action->NoiseSettings = NoiseSettings;
-
-		return Action;
-	}
-
 	UPROPERTY(BlueprintAssignable)
 	FOnNoiseComputeShaderLibrary_AsyncExecutionCompleted Completed;
 
-	FNoiseSettings NoiseSettings;
+	TArray<FNoiseSettings> NoiseSettings;
 	FVector3f Position;
 	FVector3f Size;
 	int StepSize;

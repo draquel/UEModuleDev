@@ -5,8 +5,6 @@
 #include "Curves/CurveLinearColor.h"
 #include "NoiseGenerator/Public/NoiseComputeShader/NoiseComputeShader.h"
 
-//TODO: Issues with StepSize causing 2D GPU to scale unexpectedly. I have tried many things and am currently stumped, could it be the noise?
-
 FastNoiseLite UNoise::SetupFastNoise(FNoiseSettings* settings)
 {
 	FastNoiseLite noise;
@@ -231,7 +229,9 @@ void UNoise::GenerateMap2D(FIntVector pos, FIntVector2 mapSize, int stepSize, FN
 	}
 
 	//NoiseSettings.source == GPU
-	FNoiseComputeShaderDispatchParams Params = FNoiseComputeShaderInterface::BuildParams((FVector3f)pos, FVector3f(mapSize.X/stepSize,mapSize.Y/stepSize,1),stepSize, NoiseSettings, D2, NoDensityFunction);
+	TArray<FNoiseSettings> NoiseSettingsArray;
+	NoiseSettingsArray.Add(NoiseSettings);	
+	FNoiseComputeShaderDispatchParams Params = FNoiseComputeShaderInterface::BuildParams((FVector3f)pos, FVector3f(mapSize.X/stepSize,mapSize.Y/stepSize,1),stepSize, NoiseSettingsArray, D2, NoDensityFunction);
 	FNoiseComputeShaderInterface::Dispatch(Params,[pos,mapSize,stepSize,NoiseSettings,Callback,cycles,start](TArray<float> OutputVals){
 		FNoiseMap2d NoiseMap = FNoiseMap2d(pos,mapSize,stepSize,OutputVals);
 		if (NoiseSettings.normalizeMode == Local || NoiseSettings.normalizeMode == LocalPositive){
@@ -266,40 +266,39 @@ void UNoise::GenerateMap2D(FIntVector pos, FIntVector2 mapSize, int stepSize, TA
 	double start = FPlatformTime::Seconds();
 
 	//Prepare Results
-	TArray<FNoiseComputeShaderDispatchParams> Params;
 	TMap<int,FNoiseMap2d> CPUMaps;
+	TArray<FNoiseSettings> GPUSettings;
 	for (int i = 0; i < NoiseSettings.Num(); i++){
 		if (NoiseSettings[i].gain <= 0.0f) { continue; }
 		if (NoiseSettings[i].source == GPU){
-			Params.Add(FNoiseComputeShaderInterface::BuildParams((FVector3f)pos, FVector3f(mapSize.X,mapSize.Y,stepSize)/stepSize,stepSize,NoiseSettings[i],D2,NoDensityFunction));
+			GPUSettings.Add(NoiseSettings[i]);	
 		}
 		if (NoiseSettings[i].source == CPU) {
 			CPUMaps.Add(i,GenerateMap2D(pos,mapSize,stepSize,&NoiseSettings[i]));
 		}
 	}
-
-	FNoiseComputeShaderInterface::LayeredDispatch(Params,[pos,mapSize,stepSize,CPUMaps,NoiseSettings,Callback,cycles,start](TArray<TArray<float>> OutputVals)	{
-		//Collect Results
-		int available = OutputVals.Num(); // available buffers
-		int used = 0; // buffers checked / converted
+	
+	FNoiseComputeShaderDispatchParams Params = FNoiseComputeShaderInterface::BuildParams((FVector3f)pos, FVector3f(mapSize.X,mapSize.Y,stepSize)/stepSize,stepSize,GPUSettings,D2,NoDensityFunction);
+	FNoiseComputeShaderInterface::Dispatch(Params,[pos,mapSize,stepSize,CPUMaps,NoiseSettings,Callback,cycles,start](TArray<float> OutputVals)	{
+		float cpuGain = 0;
+		float gpuGain = 0;
 		TArray<FNoiseLayer2DData> ResultData;
+		FNoiseMap2d NoiseMap = FNoiseMap2d(pos,mapSize,stepSize);
+		
 		for (int i = 0; i < NoiseSettings.Num(); i++) {
 			if (NoiseSettings[i].source == CPU && CPUMaps.Contains(i)) {
-				ResultData.Add(FNoiseLayer2DData(CPUMaps[i],NoiseSettings[i].gain,NoiseSettings[i].curve));
+				cpuGain += NoiseSettings[i].gain;
+				ResultData.Add(FNoiseLayer2DData(CPUMaps[i],NoiseSettings[i].gain,NoiseSettings[i].curve));	
 			}
-			if (NoiseSettings[i].source == GPU) {
-				if (used >= available) { continue; } //Checked all buffers
-			 	if (OutputVals[used].Num() == 0) { used++; continue; } //Buffer has no data
-				ResultData.Add(FNoiseLayer2DData(FNoiseMap2d(pos,mapSize,stepSize,OutputVals[used]),NoiseSettings[i].gain,NoiseSettings[i].curve));
-				if (NoiseSettings[i].normalizeMode == Local || NoiseSettings[i].normalizeMode == LocalPositive){
-					Normalize(&ResultData[i].noiseMap,NoiseSettings[i].normalizeMode, NoiseSettings[i].type);
-				}
-				used++;
+			if (NoiseSettings[i].source == GPU && NoiseSettings[i].gain > 0.0f)	{
+				gpuGain += NoiseSettings[i].gain;
 			}
 		}
+		if (OutputVals.Num() > 0) {
+			FNoiseMap2d GPUNoiseMap = FNoiseMap2d(pos,mapSize,stepSize,OutputVals);
+			ResultData.Add(FNoiseLayer2DData(FNoiseMap2d(pos,mapSize,stepSize,OutputVals),gpuGain,nullptr));
+		}
 
-		//Combine Results
-		FNoiseMap2d NoiseMap = FNoiseMap2d(pos,mapSize,stepSize);
 		GenerateMap2D(NoiseMap,&ResultData);
 		double end = FPlatformTime::Seconds();
 		UE_LOG(NoiseGenerator,Log,TEXT("UNoise::GenerateMap2D ==> %s [%d], Cycles: %u, RunTime: %f"),TEXT("Layered"),ResultData.Num(),cycles,end-start);
@@ -347,7 +346,6 @@ UTexture2D* UNoise::GenerateTexture(FNoiseMap2d* NoiseMap, UCurveLinearColor* Co
 }
 
 //3DMaps
-
 FNoiseMap3d UNoise::GenerateMap3D(FIntVector pos, FIntVector mapSize, int stepSize, FNoiseSettings* NoiseSettings, NoiseDensityFunction DensityFunction)
 {
 	FNoiseMap3d NoiseMap = FNoiseMap3d(pos,mapSize);
@@ -425,7 +423,9 @@ void UNoise::GenerateMap3D(FIntVector pos, FIntVector mapSize, int stepSize, FNo
 	}
 
 	//NoiseSettings.source == GPU
-	FNoiseComputeShaderDispatchParams Params = FNoiseComputeShaderInterface::BuildParams((FVector3f)pos, FVector3f(mapSize.X,mapSize.Y,mapSize.Z)/stepSize,stepSize,NoiseSettings,D3,DensityFunction);
+	TArray<FNoiseSettings> NoiseSettingsArray;
+	NoiseSettingsArray.Add(NoiseSettings);
+	FNoiseComputeShaderDispatchParams Params = FNoiseComputeShaderInterface::BuildParams((FVector3f)pos, FVector3f(mapSize.X,mapSize.Y,mapSize.Z)/stepSize,stepSize,NoiseSettingsArray,D3,DensityFunction);
 	FNoiseComputeShaderInterface::Dispatch(Params,[pos,mapSize,stepSize,NoiseSettings,Callback,cycles,start](TArray<float> OutputVals){
 		FNoiseMap3d NoiseMap = FNoiseMap3d(pos,mapSize,stepSize,OutputVals);
 		if (NoiseSettings.normalizeMode == Local || NoiseSettings.normalizeMode == LocalPositive){
@@ -460,40 +460,39 @@ void UNoise::GenerateMap3D(FIntVector pos, FIntVector mapSize, int stepSize, TAr
 	double start = FPlatformTime::Seconds();
 
 	//Prepare Results
-	TArray<FNoiseComputeShaderDispatchParams> Params;
 	TMap<int,FNoiseMap3d> CPUMaps;
+	TArray<FNoiseSettings> GPUSettings;
 	for (int i = 0; i < NoiseSettings.Num(); i++){
 		if (NoiseSettings[i].gain <= 0.0f) { continue; }
 		if (NoiseSettings[i].source == GPU){
-			Params.Add(FNoiseComputeShaderInterface::BuildParams((FVector3f)pos, FVector3f(mapSize.X,mapSize.Y,mapSize.Z)/stepSize,stepSize,NoiseSettings[i],D3,DensityFunction));
+			GPUSettings.Add(NoiseSettings[i]);
 		}
 		if (NoiseSettings[i].source == CPU) {
 			CPUMaps.Add(i,GenerateMap3D(pos,mapSize,stepSize,&NoiseSettings[i],DensityFunction));
 		}
 	}
-
-	FNoiseComputeShaderInterface::LayeredDispatch(Params,[pos,mapSize,stepSize,CPUMaps,NoiseSettings,Callback,cycles,start](TArray<TArray<float>> OutputVals)	{
-		//Collect Results
-		int available = OutputVals.Num(); // available buffers
-		int used = 0; // buffers checked / converted
+	
+	FNoiseComputeShaderDispatchParams Params = FNoiseComputeShaderInterface::BuildParams((FVector3f)pos, FVector3f(mapSize.X,mapSize.Y,mapSize.Z)/stepSize,stepSize,GPUSettings,D3,DensityFunction);
+	FNoiseComputeShaderInterface::Dispatch(Params,[pos,mapSize,stepSize,CPUMaps,NoiseSettings,Callback,cycles,start](TArray<float> OutputVals)	{
+		float cpuGain = 0;
+		float gpuGain = 0;
 		TArray<FNoiseLayer3DData> ResultData;
+		FNoiseMap3d NoiseMap = FNoiseMap3d(pos,mapSize,stepSize);
+		
 		for (int i = 0; i < NoiseSettings.Num(); i++) {
 			if (NoiseSettings[i].source == CPU && CPUMaps.Contains(i)) {
-				ResultData.Add(FNoiseLayer3DData(CPUMaps[i],NoiseSettings[i].gain,NoiseSettings[i].curve));
+				cpuGain += NoiseSettings[i].gain;
+				ResultData.Add(FNoiseLayer3DData(CPUMaps[i],NoiseSettings[i].gain,NoiseSettings[i].curve));	
 			}
-			if (NoiseSettings[i].source == GPU) {
-				if (used >= available) { continue; } //Checked all buffers
-			 	if (OutputVals[used].Num() == 0) { used++; continue; } //Buffer has no data
-				ResultData.Add(FNoiseLayer3DData(FNoiseMap3d(pos,mapSize,stepSize,OutputVals[used]),NoiseSettings[i].gain,NoiseSettings[i].curve));
-				if (NoiseSettings[i].normalizeMode == Local || NoiseSettings[i].normalizeMode == LocalPositive){
-					Normalize(&ResultData[i].noiseMap,NoiseSettings[i].normalizeMode, NoiseSettings[i].type);
-				}
-				used++;
+			if (NoiseSettings[i].source == GPU && NoiseSettings[i].gain > 0.0f)	{
+				gpuGain += NoiseSettings[i].gain;
 			}
 		}
-
-		//Combine Results
-		FNoiseMap3d NoiseMap = FNoiseMap3d(pos,mapSize,stepSize);
+		if (OutputVals.Num() > 0) {
+			FNoiseMap3d GPUNoiseMap = FNoiseMap3d(pos,mapSize,stepSize,OutputVals);
+			ResultData.Add(FNoiseLayer3DData(FNoiseMap3d(pos,mapSize,stepSize,OutputVals),gpuGain,nullptr));
+		}
+		
 		GenerateMap3D(NoiseMap,&ResultData);
 		double end = FPlatformTime::Seconds();
 		UE_LOG(NoiseGenerator,Log,TEXT("UNoise::GenerateMap3D ==> %s [%d], Cycles: %u, RunTime: %f"),TEXT("Layered"),ResultData.Num(),cycles,end-start);

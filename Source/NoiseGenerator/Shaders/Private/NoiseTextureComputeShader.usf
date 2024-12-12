@@ -2,25 +2,23 @@
 #include "Noise.usf"
 
 RWTexture2D<float3> RenderTarget;
+StructuredBuffer<ShaderNoiseSettings> NoiseSettings;
 
 float3 Position;
 float3 Size;
-
-float3 Offset;
-int Octaves;
-float Frequency;
-float Lacunarity;
-float Persistence;
-float Scale;
 int StepSize;
-int Filter;
-int Type;
-int NormalizeMode;
-float DomainWarp;
-
+int SettingsSize;
 
 [numthreads(THREADS_X, THREADS_Y, THREADS_Z)]
 void NoiseTextureComputeShader(	uint3 DispatchThreadId : SV_DispatchThreadID, uint GroupIndex : SV_GroupIndex ) {
-	float noise = Noise(float2(DispatchThreadId.x,DispatchThreadId.y)*StepSize,Position,Offset,Type,Filter,NormalizeMode,Octaves,Frequency,Lacunarity,Persistence,Scale);
+
+	float noise = 0;
+	float gain = 0;
+	for (int i = 0; i < SettingsSize; i++) {
+		ShaderNoiseSettings Settings = NoiseSettings[i];
+		gain += Settings.Gain;
+		noise += Noise(float2(DispatchThreadId.x,DispatchThreadId.y)*StepSize,Position,Settings) * Settings.Gain;
+	}
+	noise /= gain;
 	RenderTarget[DispatchThreadId.xy] = float4(noise,0.0f,0.0f,1.0f);
 }
