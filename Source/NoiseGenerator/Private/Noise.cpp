@@ -277,6 +277,21 @@ void UNoise::GenerateMap2D(FIntVector pos, FIntVector2 mapSize, int stepSize, TA
 			CPUMaps.Add(i,GenerateMap2D(pos,mapSize,stepSize,&NoiseSettings[i]));
 		}
 	}
+
+	if (GPUSettings.Num() == 0)	{
+		FNoiseMap2d NoiseMap = FNoiseMap2d(pos,mapSize,stepSize);
+		TArray<FNoiseLayer2DData> ResultData;
+		for (int i = 0; i < NoiseSettings.Num(); i++) {
+			if (NoiseSettings[i].source == CPU && CPUMaps.Contains(i)) {
+				ResultData.Add(FNoiseLayer2DData(CPUMaps[i],NoiseSettings[i].gain,NoiseSettings[i].curve));	
+			}
+		}
+		GenerateMap2D(NoiseMap,&ResultData);
+		double end = FPlatformTime::Seconds();
+		UE_LOG(NoiseGenerator,Log,TEXT("UNoise::GenerateMap2D ==> %s [%d], Cycles: %u, RunTime: %f"),TEXT("Layered - CPU"),ResultData.Num(),cycles,end-start);
+		Callback(NoiseMap);
+		return;
+	}
 	
 	FNoiseComputeShaderDispatchParams Params = FNoiseComputeShaderInterface::BuildParams((FVector3f)pos, FVector3f(mapSize.X,mapSize.Y,stepSize)/stepSize,stepSize,GPUSettings,D2,NoDensityFunction);
 	FNoiseComputeShaderInterface::Dispatch(Params,[pos,mapSize,stepSize,CPUMaps,NoiseSettings,Callback,cycles,start](TArray<float> OutputVals)	{
@@ -301,7 +316,7 @@ void UNoise::GenerateMap2D(FIntVector pos, FIntVector2 mapSize, int stepSize, TA
 
 		GenerateMap2D(NoiseMap,&ResultData);
 		double end = FPlatformTime::Seconds();
-		UE_LOG(NoiseGenerator,Log,TEXT("UNoise::GenerateMap2D ==> %s [%d], Cycles: %u, RunTime: %f"),TEXT("Layered"),ResultData.Num(),cycles,end-start);
+		UE_LOG(NoiseGenerator,Log,TEXT("UNoise::GenerateMap2D ==> %s [%d], Cycles: %u, RunTime: %f"),CPUMaps.Num()>0?TEXT("Layered CPU/GPU"):TEXT("Layered GPU"),ResultData.Num(),cycles,end-start);
 		Callback(NoiseMap);
 	});
 }
