@@ -7,6 +7,12 @@
 #include "QuadTree/QuadTreeNode.h"
 #include "MarchingCubes/MarchingCubes.h"
 
+/**
+ *
+ *	Rect Mesh
+ *
+ **/
+
 FMeshData UMeshDataGenerator::RectMesh(FVector position, FVector size, FVector2D segments, float UVScale, FNoiseSettings* NoiseSettings, int heightMultiplier)
 {
 	FMeshData MeshData = FMeshData();
@@ -92,7 +98,57 @@ FMeshData UMeshDataGenerator::RectMesh(FNoiseMap2d* NoiseMap, FVector position, 
 	return MeshData;
 }
 
-FMeshData UMeshDataGenerator::QuadTreeMesh(QuadTree* QTree, float UVScale, int depthFilter, FNoiseSettings* NoiseSettings, int heightMultiplier)
+FMeshData UMeshDataGenerator::RectMesh(UTexture2D* Texture, FVector position, FVector size, int StepSize, int TextureStepSize, float UVScale, int heightMultiplier)
+{
+	FMeshData MeshData = FMeshData();
+	MeshData.UVScale = UVScale;
+	double start = FPlatformTime::Seconds();
+
+	FVector segments = size / StepSize;
+	
+	for (int x = 0; x <= segments.X; x++) {
+		for(int y = 0; y <= segments.Y; y++) {
+			if(Texture != nullptr) {
+				FVector lpos = FVector((StepSize*x),(StepSize*y),0); //Mesh Local pos
+				FIntVector2 spos = FIntVector2(lpos.X/TextureStepSize,lpos.Y/TextureStepSize); //Texture Sample Pos
+				float noise = SampleTexture(Texture,spos);
+				MeshData.AddVertex(FVector(lpos.X,lpos.Y,noise*heightMultiplier));
+			} else {
+				MeshData.AddVertex (FVector((StepSize*x),(StepSize*y),0));
+			}
+
+			if(x < segments.X && y < segments.Y) {
+				int topLeft = y * (segments.X + 1) + x;
+				int bottomLeft = (y + 1) * (segments.Y + 1) + x;
+				int topRight = topLeft + 1;
+				int bottomRight = bottomLeft + 1;
+			
+				MeshData.Triangles.Add(topLeft);
+				MeshData.Triangles.Add(topRight);
+				MeshData.Triangles.Add(bottomLeft);
+			
+				MeshData.Triangles.Add(bottomLeft);
+				MeshData.Triangles.Add(topRight);
+				MeshData.Triangles.Add(bottomRight);	
+			}
+		}
+	}
+
+	MeshData.CalculateTangents();
+	
+	double end = FPlatformTime::Seconds();
+	UE_LOG(MeshGenerator, Log, TEXT("MeshGenerator::RectMesh() ==> Verts:%d, Tris:%d  Runtime: %f"), MeshData.Vertices.Num(), MeshData.Triangles.Num(), end - start);
+	return MeshData;
+}
+
+
+/**
+ *
+ *	QuadTree Mesh
+ *
+ **/
+
+FMeshData UMeshDataGenerator::QuadTreeMesh(UQuadTree* QTree, float UVScale, int depthFilter, FNoiseSettings* NoiseSettings, int heightMultiplier)
 {
 	FMeshData MeshData = FMeshData();
 	MeshData.UVScale = UVScale;
@@ -178,14 +234,15 @@ FMeshData UMeshDataGenerator::QuadTreeMesh(QuadTree* QTree, float UVScale, int d
 	return MeshData;
 }
 
-FMeshData UMeshDataGenerator::QuadTreeMesh(FNoiseMap2d* NoiseMap, QuadTree* QTree, float UVScale, int depthFilter, int heightMultiplier)
+FMeshData UMeshDataGenerator::QuadTreeMesh(FNoiseMap2d* NoiseMap, UQuadTree* QTree, float UVScale, int depthFilter, int heightMultiplier)
 {
 	FMeshData MeshData = FMeshData();
 	MeshData.UVScale = UVScale;
 	double start = FPlatformTime::Seconds();
 
-	if (QTree->Settings.MinSize % NoiseMap->StepSize != 0) {
-		UE_LOG(MeshGenerator,Error,TEXT("MeshGenerator::OuadTreeMesh ==> The QuadTree.Settings.MinSize[%d] must be evenly divisible by the FNoiseMap2D.StepSize[%d]."),QTree->Settings.MinSize,NoiseMap->StepSize);
+	//Alignment Error
+	if (QTree->Settings.MinSize / NoiseMap->StepSize < 2) {
+		UE_LOG(MeshGenerator,Error,TEXT("MeshGenerator::OuadTreeMesh ==> The QuadTree.Settings.MinSize[%d] must be at minimum twice the FNoiseMap2D.StepSize[%d] to guarantee sample availability."),QTree->Settings.MinSize,NoiseMap->StepSize);
 		return MeshData;	
 	}
 
@@ -269,7 +326,200 @@ FMeshData UMeshDataGenerator::QuadTreeMesh(FNoiseMap2d* NoiseMap, QuadTree* QTre
 	return MeshData;
 }
 
-FMeshData UMeshDataGenerator::MarchingCubes(FVector position, FVector size, int stepSize, FNoiseSettings* NoiseSettings, float UVScale, float isoLevel, bool interpolate, bool renderSides)
+FMeshData UMeshDataGenerator::QuadTreeMesh(UTexture2D* Texture, UQuadTree* QTree, int StepSize, float UVScale, int depthFilter, int heightMultiplier)
+{
+	FMeshData MeshData = FMeshData();
+	MeshData.UVScale = UVScale;
+	double start = FPlatformTime::Seconds();
+
+	//Alignment Error
+	if (QTree->Settings.MinSize / StepSize < 2) {
+		UE_LOG(MeshGenerator,Error,TEXT("MeshGenerator::OuadTreeMesh ==> The QuadTree.Settings.MinSize[%d] must be at minimum twice the FNoiseMap2D.StepSize[%d] to guarantee sample availability."),QTree->Settings.MinSize,StepSize);
+		return MeshData;	
+	}
+
+	FVector posCorner = QTree->Position + QTree->Size;
+	for (int i = 0; i < QTree->Leaves.Num(); i++) {
+		if(depthFilter != 0 && QTree->Leaves[i].Depth < depthFilter){ continue; }
+
+		//Corners
+		double posX = QTree->Leaves[i].Center.X + QTree->Leaves[i].Size.X * 0.5f;
+		double negX = QTree->Leaves[i].Center.X - QTree->Leaves[i].Size.X * 0.5f;
+		double posY = QTree->Leaves[i].Center.Y + QTree->Leaves[i].Size.Y * 0.5f;
+		double negY = QTree->Leaves[i].Center.Y - QTree->Leaves[i].Size.Y * 0.5f;
+
+		double lzeroX = FMeshData::LocalizePos(QTree->Leaves[i].Center.X,QTree->Size.X);
+		double lzeroY = FMeshData::LocalizePos(QTree->Leaves[i].Center.Y,QTree->Size.Y);
+		double lposX = (posX == posCorner.X ? QTree->Size.X : FMeshData::LocalizePos(QTree->Leaves[i].Center.X + QTree->Leaves[i].Size.X * 0.5f,QTree->Size.X));
+		double lnegX = (negX == QTree->Position.X ? 0 : FMeshData::LocalizePos(QTree->Leaves[i].Center.X - QTree->Leaves[i].Size.X * 0.5f,QTree->Size.X));
+		double lposY = (posY == posCorner.Y ? QTree->Size.Y : FMeshData::LocalizePos(QTree->Leaves[i].Center.Y + QTree->Leaves[i].Size.Y * 0.5f,QTree->Size.Y));
+		double lnegY = (negY == QTree->Position.Y ? 0 : FMeshData::LocalizePos(QTree->Leaves[i].Center.Y - QTree->Leaves[i].Size.Y * 0.5f,QTree->Size.Y));
+
+		double z = SampleTexture(Texture,FIntVector2(lzeroX,lzeroY)/StepSize) * heightMultiplier;
+		// UE_LOG(LogTemp,Warning,TEXT("QT MESH : pos:%s - val:%f"),*(FIntVector2(lzeroX,lzeroY)/StepSize).ToString(),z);
+		MeshData.AddVertex(FVector(lzeroX,lzeroY,z));
+		int zeroIndex = MeshData.Vertices.Num() - 1;
+		
+		double z1 = SampleTexture(Texture,FIntVector2(lnegX,lposY)/StepSize) * heightMultiplier;
+		MeshData.AddVertex(FVector(lnegX,lposY,z1));
+		double z3 = SampleTexture(Texture,FIntVector2(lposX,lposY)/StepSize) * heightMultiplier;
+		MeshData.AddVertex(FVector(lposX,lposY,z3));
+		double z5 = SampleTexture(Texture,FIntVector2(lposX,lnegY)/StepSize) * heightMultiplier;
+		MeshData.AddVertex(FVector(lposX,lnegY,z5));
+		double z7 = SampleTexture(Texture,FIntVector2(lnegX,lnegY)/StepSize) * heightMultiplier;
+		MeshData.AddVertex(FVector(lnegX,lnegY,z7));
+		int index = zeroIndex + 4;
+
+		if(QTree->Leaves[i].Neighbors[2] || fmod(posY, QTree->Size.Y) == 0) //North
+		{
+			double z2 = SampleTexture(Texture,FIntVector2(lzeroX,lposY)/StepSize) * heightMultiplier;
+			MeshData.AddVertex(FVector(lzeroX,lposY,z2));
+			index++;
+			MeshData.AddTriangle(zeroIndex+1,index,zeroIndex);
+			MeshData.AddTriangle(index,zeroIndex+2,zeroIndex);			
+		}else {
+			MeshData.AddTriangle(zeroIndex+1,zeroIndex+2,zeroIndex);
+		}
+		if(QTree->Leaves[i].Neighbors[0] || fmod(posX, QTree->Size.X) == 0) // East
+		{
+			double z4 = SampleTexture(Texture,FIntVector2(lposX,lzeroY)/StepSize) * heightMultiplier;
+			MeshData.AddVertex(FVector(lposX,lzeroY,z4));
+			index++;
+			MeshData.AddTriangle(zeroIndex+2,index,zeroIndex);
+			MeshData.AddTriangle(index,zeroIndex+3,zeroIndex);			
+		}else {
+			MeshData.AddTriangle(zeroIndex+2,zeroIndex+3,zeroIndex);
+		}
+		if(QTree->Leaves[i].Neighbors[3] || fmod(negY, QTree->Size.Y) == 0) // South 
+		{
+			double z6 = SampleTexture(Texture,FIntVector2(lzeroX,lnegY)/StepSize) * heightMultiplier;
+			MeshData.AddVertex(FVector(lzeroX,lnegY,z6));
+			index++;
+			MeshData.AddTriangle(zeroIndex+3,index,zeroIndex);
+			MeshData.AddTriangle(index,zeroIndex+4,zeroIndex);			
+		}else {
+			MeshData.AddTriangle(zeroIndex+3,zeroIndex+4,zeroIndex);
+		}
+		if(QTree->Leaves[i].Neighbors[1] || fmod(negX, QTree->Size.X) == 0) // West 
+		{
+			double z8 = SampleTexture(Texture,FIntVector2(lnegX,lzeroY)/StepSize) * heightMultiplier;
+			MeshData.AddVertex(FVector(lnegX,lzeroY,z8));
+			index++;
+			MeshData.AddTriangle(zeroIndex+4,index,zeroIndex);
+			MeshData.AddTriangle(index,zeroIndex+1,zeroIndex);			
+		}else {
+			MeshData.AddTriangle(zeroIndex+4,zeroIndex+1,zeroIndex);
+		}
+	}
+
+	MeshData.CalculateTangents();
+
+	double end = FPlatformTime::Seconds();
+	UE_LOG(MeshGenerator, Log, TEXT("MeshGenerator::QuadTreeMesh() ==> Verts: %d, Tris: %d  Runtime: %f"), MeshData.Vertices.Num(), MeshData.Triangles.Num(), end - start);
+	return MeshData;
+}
+
+// FMeshData UMeshDataGenerator::QuadTreeMesh(UTextureRenderTarget2D* RenderTarget, UQuadTree* QTree, int StepSize, float UVScale, int depthFilter, int heightMultiplier)
+// {
+// 	FMeshData MeshData = FMeshData();
+// 	MeshData.UVScale = UVScale;
+// 	double start = FPlatformTime::Seconds();
+//
+// 	//Alignment Error
+// 	if (QTree->Settings.MinSize / StepSize < 2) {
+// 		UE_LOG(MeshGenerator,Error,TEXT("MeshGenerator::OuadTreeMesh ==> The QuadTree.Settings.MinSize[%d] must be at minimum twice the FNoiseMap2D.StepSize[%d] to guarantee sample availability."),QTree->Settings.MinSize,StepSize);
+// 		return MeshData;	
+// 	}
+//
+// 	FVector posCorner = QTree->Position + QTree->Size;
+// 	for (int i = 0; i < QTree->Leaves.Num(); i++) {
+// 		if(depthFilter != 0 && QTree->Leaves[i].Depth < depthFilter){ continue; }
+//
+// 		//Corners
+// 		double posX = QTree->Leaves[i].Center.X + QTree->Leaves[i].Size.X * 0.5f;
+// 		double negX = QTree->Leaves[i].Center.X - QTree->Leaves[i].Size.X * 0.5f;
+// 		double posY = QTree->Leaves[i].Center.Y + QTree->Leaves[i].Size.Y * 0.5f;
+// 		double negY = QTree->Leaves[i].Center.Y - QTree->Leaves[i].Size.Y * 0.5f;
+//
+// 		double lzeroX = FMeshData::LocalizePos(QTree->Leaves[i].Center.X,QTree->Size.X);
+// 		double lzeroY = FMeshData::LocalizePos(QTree->Leaves[i].Center.Y,QTree->Size.Y);
+// 		double lposX = (posX == posCorner.X ? QTree->Size.X : FMeshData::LocalizePos(QTree->Leaves[i].Center.X + QTree->Leaves[i].Size.X * 0.5f,QTree->Size.X));
+// 		double lnegX = (negX == QTree->Position.X ? 0 : FMeshData::LocalizePos(QTree->Leaves[i].Center.X - QTree->Leaves[i].Size.X * 0.5f,QTree->Size.X));
+// 		double lposY = (posY == posCorner.Y ? QTree->Size.Y : FMeshData::LocalizePos(QTree->Leaves[i].Center.Y + QTree->Leaves[i].Size.Y * 0.5f,QTree->Size.Y));
+// 		double lnegY = (negY == QTree->Position.Y ? 0 : FMeshData::LocalizePos(QTree->Leaves[i].Center.Y - QTree->Leaves[i].Size.Y * 0.5f,QTree->Size.Y));
+//
+// 		double z = SampleRenderTargetR16f(RenderTarget,FIntVector2(lzeroX,lzeroY)/StepSize) * heightMultiplier;
+// 		// UE_LOG(LogTemp,Warning,TEXT("QT MESH : pos:%s - val:%f"),*(FIntVector2(lzeroX,lzeroY)/StepSize).ToString(),z);
+// 		MeshData.AddVertex(FVector(lzeroX,lzeroY,z));
+// 		int zeroIndex = MeshData.Vertices.Num() - 1;
+// 		
+// 		double z1 = SampleRenderTargetR16f(RenderTarget,FIntVector2(lnegX,lposY)/StepSize) * heightMultiplier;
+// 		MeshData.AddVertex(FVector(lnegX,lposY,z1));
+// 		double z3 = SampleRenderTargetR16f(RenderTarget,FIntVector2(lposX,lposY)/StepSize) * heightMultiplier;
+// 		MeshData.AddVertex(FVector(lposX,lposY,z3));
+// 		double z5 = SampleRenderTargetR16f(RenderTarget,FIntVector2(lposX,lnegY)/StepSize) * heightMultiplier;
+// 		MeshData.AddVertex(FVector(lposX,lnegY,z5));
+// 		double z7 = SampleRenderTargetR16f(RenderTarget,FIntVector2(lnegX,lnegY)/StepSize) * heightMultiplier;
+// 		MeshData.AddVertex(FVector(lnegX,lnegY,z7));
+// 		int index = zeroIndex + 4;
+//
+// 		if(QTree->Leaves[i].Neighbors[2] || fmod(posY, QTree->Size.Y) == 0) //North
+// 		{
+// 			double z2 = SampleRenderTargetR16f(RenderTarget,FIntVector2(lzeroX,lposY)/StepSize) * heightMultiplier;
+// 			MeshData.AddVertex(FVector(lzeroX,lposY,z2));
+// 			index++;
+// 			MeshData.AddTriangle(zeroIndex+1,index,zeroIndex);
+// 			MeshData.AddTriangle(index,zeroIndex+2,zeroIndex);			
+// 		}else {
+// 			MeshData.AddTriangle(zeroIndex+1,zeroIndex+2,zeroIndex);
+// 		}
+// 		if(QTree->Leaves[i].Neighbors[0] || fmod(posX, QTree->Size.X) == 0) // East
+// 		{
+// 			double z4 = SampleRenderTargetR16f(RenderTarget,FIntVector2(lposX,lzeroY)/StepSize) * heightMultiplier;
+// 			MeshData.AddVertex(FVector(lposX,lzeroY,z4));
+// 			index++;
+// 			MeshData.AddTriangle(zeroIndex+2,index,zeroIndex);
+// 			MeshData.AddTriangle(index,zeroIndex+3,zeroIndex);			
+// 		}else {
+// 			MeshData.AddTriangle(zeroIndex+2,zeroIndex+3,zeroIndex);
+// 		}
+// 		if(QTree->Leaves[i].Neighbors[3] || fmod(negY, QTree->Size.Y) == 0) // South 
+// 		{
+// 			double z6 = SampleRenderTargetR16f(RenderTarget,FIntVector2(lzeroX,lnegY)/StepSize) * heightMultiplier;
+// 			MeshData.AddVertex(FVector(lzeroX,lnegY,z6));
+// 			index++;
+// 			MeshData.AddTriangle(zeroIndex+3,index,zeroIndex);
+// 			MeshData.AddTriangle(index,zeroIndex+4,zeroIndex);			
+// 		}else {
+// 			MeshData.AddTriangle(zeroIndex+3,zeroIndex+4,zeroIndex);
+// 		}
+// 		if(QTree->Leaves[i].Neighbors[1] || fmod(negX, QTree->Size.X) == 0) // West 
+// 		{
+// 			double z8 = SampleRenderTargetR16f(RenderTarget,FIntVector2(lnegX,lzeroY)/StepSize) * heightMultiplier;
+// 			MeshData.AddVertex(FVector(lnegX,lzeroY,z8));
+// 			index++;
+// 			MeshData.AddTriangle(zeroIndex+4,index,zeroIndex);
+// 			MeshData.AddTriangle(index,zeroIndex+1,zeroIndex);			
+// 		}else {
+// 			MeshData.AddTriangle(zeroIndex+4,zeroIndex+1,zeroIndex);
+// 		}
+// 	}
+//
+// 	MeshData.CalculateTangents();
+//
+// 	double end = FPlatformTime::Seconds();
+// 	UE_LOG(MeshGenerator, Log, TEXT("MeshGenerator::QuadTreeMesh() ==> Verts: %d, Tris: %d  Runtime: %f"), MeshData.Vertices.Num(), MeshData.Triangles.Num(), end - start);
+// 	return MeshData;
+// }
+
+
+/**
+ *
+ *	MarchingCubes
+ *
+ **/
+
+FMeshData UMeshDataGenerator::MarchingCubes(FVector position, FVector size, int stepSize, FNoiseSettings* NoiseSettings, float UVScale, FMarchingCubesSettings MarchingCubesSettings)
 {
     FMeshData MeshData = FMeshData();
     MeshData.UVScale = UVScale;
@@ -290,8 +540,8 @@ FMeshData UMeshDataGenerator::MarchingCubes(FVector position, FVector size, int 
                 for (int i = 0; i < UMarchingCubes::cornerOffsets.Num(); i++) {
                 	FIntVector mp =(FIntVector) (pos + UMarchingCubes::cornerOffsets[i]*stepSize);
                 	FIntVector s = (FIntVector)position+(FIntVector)(pos + UMarchingCubes::cornerOffsets[i]*stepSize);
-                    if (renderSides && (mp.X >= size.X || mp.Y >= size.Y || mp.Z >= size.Z || mp.X <= 0 || mp.Y <= 0 || mp.Z <= 0)) {
-                        cubeValues.Add(isoLevel);
+                    if (MarchingCubesSettings.renderSides && (mp.X >= size.X || mp.Y >= size.Y || mp.Z >= size.Z || mp.X <= 0 || mp.Y <= 0 || mp.Z <= 0)) {
+                        cubeValues.Add(MarchingCubesSettings.iso);
                     } else {
 						cubeValues.Add(UNoise::Evaluate3D((FVector)s,NoiseSettings));
                     }
@@ -299,7 +549,7 @@ FMeshData UMeshDataGenerator::MarchingCubes(FVector position, FVector size, int 
 
                 int cubeIndex = 0;
                 for (int i = 0; i < cubeValues.Num(); i++) {
-                    if (cubeValues[i] < isoLevel) {
+                    if (cubeValues[i] < MarchingCubesSettings.iso) {
                         cubeIndex |= 1 << i;
                     }
                 }
@@ -319,13 +569,13 @@ FMeshData UMeshDataGenerator::MarchingCubes(FVector position, FVector size, int 
                     FVector b;
                     FVector c;
 
-                    if (interpolate) {
+                    if (MarchingCubesSettings.interpolate) {
                         a = Interp(UMarchingCubes::cornerOffsets[e00] * stepSize, cubeValues[e00],
-                                   UMarchingCubes::cornerOffsets[e01] * stepSize, cubeValues[e01], isoLevel) + pos;
+                                   UMarchingCubes::cornerOffsets[e01] * stepSize, cubeValues[e01], MarchingCubesSettings.iso) + pos;
                         b = Interp(UMarchingCubes::cornerOffsets[e10] * stepSize, cubeValues[e10],
-                                   UMarchingCubes::cornerOffsets[e11] * stepSize, cubeValues[e11], isoLevel) + pos;
+                                   UMarchingCubes::cornerOffsets[e11] * stepSize, cubeValues[e11], MarchingCubesSettings.iso) + pos;
                         c = Interp(UMarchingCubes::cornerOffsets[e20] * stepSize, cubeValues[e20],
-                                   UMarchingCubes::cornerOffsets[e21] * stepSize, cubeValues[e21], isoLevel) + pos;
+                                   UMarchingCubes::cornerOffsets[e21] * stepSize, cubeValues[e21], MarchingCubesSettings.iso) + pos;
                     } else {
                         a = Default(UMarchingCubes::cornerOffsets[e00] * stepSize, UMarchingCubes::cornerOffsets[e01] * stepSize) + pos;
                         b = Default(UMarchingCubes::cornerOffsets[e10] * stepSize, UMarchingCubes::cornerOffsets[e11] * stepSize) + pos;
@@ -345,7 +595,7 @@ FMeshData UMeshDataGenerator::MarchingCubes(FVector position, FVector size, int 
     return MeshData;
 }
 
-FMeshData UMeshDataGenerator::MarchingCubes(FNoiseMap3d* NoiseMap, FVector position, FVector size, int stepSize, float UVScale, float isoLevel, bool interpolate, bool renderSides)
+FMeshData UMeshDataGenerator::MarchingCubes(FNoiseMap3d* NoiseMap, FVector position, FVector size, int stepSize, float UVScale,FMarchingCubesSettings MarchingCubesSettings)
 {
     FMeshData MeshData = FMeshData();
     MeshData.UVScale = UVScale;
@@ -366,8 +616,8 @@ FMeshData UMeshDataGenerator::MarchingCubes(FNoiseMap3d* NoiseMap, FVector posit
                 for (int i = 0; i < UMarchingCubes::cornerOffsets.Num(); i++) {
                 	FIntVector mp =(FIntVector) (pos + UMarchingCubes::cornerOffsets[i]*stepSize);
                 	FIntVector s = (FIntVector)position+(FIntVector)(pos + UMarchingCubes::cornerOffsets[i]*stepSize);
-                    if (renderSides && (mp.X >= size.X || mp.Y >= size.Y || mp.Z >= size.Z || mp.X <= 0 || mp.Y <= 0 || mp.Z <= 0)) {
-                        cubeValues.Add(isoLevel);
+                    if (MarchingCubesSettings.renderSides && (mp.X >= size.X || mp.Y >= size.Y || mp.Z >= size.Z || mp.X <= 0 || mp.Y <= 0 || mp.Z <= 0)) {
+                        cubeValues.Add(MarchingCubesSettings.iso);
                     } else {
                     	if (!NoiseMap->Map.Contains(s)) {
                     		UE_LOG(MeshGenerator,Error,TEXT("MeshGenerator::MarchingCubes => invalid map index %s"),*s.ToString());
@@ -379,7 +629,7 @@ FMeshData UMeshDataGenerator::MarchingCubes(FNoiseMap3d* NoiseMap, FVector posit
 
                 int cubeIndex = 0;
                 for (int i = 0; i < cubeValues.Num(); i++) {
-                    if (cubeValues[i] < isoLevel) {
+                    if (cubeValues[i] < MarchingCubesSettings.iso) {
                         cubeIndex |= 1 << i;
                     }
                 }
@@ -399,13 +649,13 @@ FMeshData UMeshDataGenerator::MarchingCubes(FNoiseMap3d* NoiseMap, FVector posit
                     FVector b;
                     FVector c;
 
-                    if (interpolate) {
+                    if (MarchingCubesSettings.interpolate) {
                         a = Interp(UMarchingCubes::cornerOffsets[e00] * stepSize, cubeValues[e00],
-                                   UMarchingCubes::cornerOffsets[e01] * stepSize, cubeValues[e01], isoLevel) + pos;
+                                   UMarchingCubes::cornerOffsets[e01] * stepSize, cubeValues[e01], MarchingCubesSettings.iso) + pos;
                         b = Interp(UMarchingCubes::cornerOffsets[e10] * stepSize, cubeValues[e10],
-                                   UMarchingCubes::cornerOffsets[e11] * stepSize, cubeValues[e11], isoLevel) + pos;
+                                   UMarchingCubes::cornerOffsets[e11] * stepSize, cubeValues[e11], MarchingCubesSettings.iso) + pos;
                         c = Interp(UMarchingCubes::cornerOffsets[e20] * stepSize, cubeValues[e20],
-                                   UMarchingCubes::cornerOffsets[e21] * stepSize, cubeValues[e21], isoLevel) + pos;
+                                   UMarchingCubes::cornerOffsets[e21] * stepSize, cubeValues[e21], MarchingCubesSettings.iso) + pos;
                     } else {
                         a = Default(UMarchingCubes::cornerOffsets[e00] * stepSize, UMarchingCubes::cornerOffsets[e01] * stepSize) + pos;
                         b = Default(UMarchingCubes::cornerOffsets[e10] * stepSize, UMarchingCubes::cornerOffsets[e11] * stepSize) + pos;
@@ -431,4 +681,53 @@ FVector UMeshDataGenerator::Interp(FVector edgeVertex1, float valueAtVertex1, FV
 
 FVector UMeshDataGenerator::Default(FVector edgeVertex1, FVector edgeVertex2) {
 	return (edgeVertex1 + edgeVertex2) / 2;
+}
+
+
+/**
+ *
+ *	Texture Support	
+ *
+ **/
+
+//R16F Format
+float UMeshDataGenerator::SampleTexture(UTexture2D* Texture, FIntVector2 Coordinates)
+{
+	if (!Texture) return 0.0f;
+
+	// Access the texture's source data
+	FTextureSource& Source = Texture->Source;
+
+	// Ensure the source format is compatible (R16f)
+	if (Source.GetFormat() != TSF_R16F) return 0.0f;
+
+	// Ensure the coordinates are within bounds
+	int32 Width = Source.GetSizeX();
+	int32 Height = Source.GetSizeY();
+
+	if (Coordinates.X < 0 || Coordinates.X >= Width || Coordinates.Y < 0 || Coordinates.Y >= Height) {
+		return 0.0f;
+	}
+
+	// Lock the source data for reading
+	const void* Data = Source.LockMipReadOnly(0);
+	if (!Data) return 0.0f;
+
+	// Calculate the pixel index
+	int32 PixelIndex = Coordinates.Y * Width + Coordinates.X;
+
+	// Access the 16-bit float value and convert it to a 32-bit float
+	const uint16* RawData = static_cast<const uint16*>(Data);
+	uint16 RawValue = RawData[PixelIndex];
+
+	FFloat16 HalfValue;
+	HalfValue.Encoded = RawValue;
+	float PixelValue = HalfValue.GetFloat(); 
+	// UE_LOG(LogTemp, Log, TEXT("16-bit: %u, Float:%f"), RawValue,PixelValue);
+	// FMath::StoreHalf(&RawValue,PixelValue);
+
+	// Unlock the source data
+	Source.UnlockMip(0);
+
+	return PixelValue;
 }
