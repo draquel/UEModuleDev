@@ -155,7 +155,7 @@ void FNoiseTextureComputeShaderInterface::DispatchRenderThread(FRHICommandListIm
 		if (bIsShaderValid) {
 			FNoiseTextureComputeShader::FParameters* PassParameters = GraphBuilder.AllocParameters<FNoiseTextureComputeShader::FParameters>();
 
-			FRDGTextureDesc Desc(FRDGTextureDesc::Create2D(Params.RenderTarget->GetSizeXY(), PF_B8G8R8A8, FClearValueBinding::White, TexCreate_RenderTargetable | TexCreate_ShaderResource | TexCreate_UAV));
+			FRDGTextureDesc Desc(FRDGTextureDesc::Create2D(Params.RenderTarget->GetSizeXY(), PF_R16F, FClearValueBinding::White, TexCreate_RenderTargetable | TexCreate_ShaderResource | TexCreate_UAV));
 			FRDGTextureRef TmpTexture = GraphBuilder.CreateTexture(Desc, TEXT("NoiseTextureComputeShader_TempTexture"));
 			FRDGTextureRef TargetTexture = RegisterExternalTexture(GraphBuilder, Params.RenderTarget->GetRenderTargetTexture(), TEXT("NoiseTextureComputeShader_RT"));
 			PassParameters->RenderTarget = GraphBuilder.CreateUAV(TmpTexture);
@@ -187,7 +187,7 @@ void FNoiseTextureComputeShaderInterface::DispatchRenderThread(FRHICommandListIm
 
 			
 			// The copy will fail if we don't have matching formats, let's check and make sure we do.
-			if (TargetTexture->Desc.Format == PF_B8G8R8A8) {
+			if (TargetTexture->Desc.Format == PF_R16F) {
 				AddCopyTexturePass(GraphBuilder, TmpTexture, TargetTexture, FRHICopyTextureInfo());
 			} else {
 #if WITH_EDITOR

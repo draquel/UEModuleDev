@@ -2,6 +2,7 @@
 
 #include "NoiseGenerator.h"
 #include "NoiseSettings.h"
+#include "Engine/TextureRenderTarget2D.h"
 #include "Noise.generated.h"
 
 class FastNoiseLite;
@@ -288,6 +289,8 @@ public:
 	static UTexture2D* GenerateTexture(FIntVector pos, FIntVector2 mapSize, FNoiseSettings* NoiseSettings, UCurveLinearColor* ColorCurve = nullptr);
 	static UTexture2D* GenerateTexture(FIntVector pos, FIntVector2 mapSize, TArray<FNoiseSettings>* NoiseSettings, UCurveLinearColor* ColorCurve = nullptr);
 	static UTexture2D* GenerateTexture(FNoiseMap2d* NoiseMap, UCurveLinearColor* ColorCurve = nullptr);
+	static void GenerateTexture(UTextureRenderTarget2D* RenderTarget, FIntVector pos, FIntVector2 Size, int stepSize, TArray<FNoiseSettings>*
+	                            NoiseSettings, TFunction<void()> Callback);
 
 	//CPU 3D Maps
 	static FNoiseMap3d GenerateMap3D(FIntVector pos, FIntVector mapSize, int stepSize, FNoiseSettings* NoiseSettings, NoiseDensityFunction DensityFunction = NoDensityFunction);
@@ -300,4 +303,5 @@ public:
 	//Poisson
 	static FVector2D PoissonSample(const FVector2D& center, float minRadius, float maxRadius);
 	static TArray<FVector2D> PoissonDiscSample(const FVector2D& topLeft, const FVector2D& bottomRight, float minDist, int newPointsCount);
+	static UTextureRenderTarget2D* CreateRenderTarget(FIntVector2 Size, ETextureRenderTargetFormat Format);
 };

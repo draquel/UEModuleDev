@@ -20,5 +20,5 @@ void NoiseTextureComputeShader(	uint3 DispatchThreadId : SV_DispatchThreadID, ui
 		noise += Noise(float2(DispatchThreadId.x,DispatchThreadId.y)*StepSize,Position,Settings) * Settings.Gain;
 	}
 	noise /= gain;
-	RenderTarget[DispatchThreadId.xy] = float4(noise,0.0f,0.0f,1.0f);
+	RenderTarget[DispatchThreadId.xy] = noise;
 }

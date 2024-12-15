@@ -4,6 +4,7 @@
 #include "Poisson.h"
 #include "Curves/CurveLinearColor.h"
 #include "NoiseGenerator/Public/NoiseComputeShader/NoiseComputeShader.h"
+#include "NoiseGenerator/Public/NoiseTextureComputeShader/NoiseTextureComputeShader.h"
 
 FastNoiseLite UNoise::SetupFastNoise(FNoiseSettings* settings)
 {
@@ -360,6 +361,16 @@ UTexture2D* UNoise::GenerateTexture(FNoiseMap2d* NoiseMap, UCurveLinearColor* Co
 	return texture;	
 }
 
+void UNoise::GenerateTexture(UTextureRenderTarget2D* RenderTarget, FIntVector pos, FIntVector2 Size, int stepSize, TArray<FNoiseSettings>* NoiseSettings, TFunction<void()> Callback)
+{
+	double start = FPlatformTime::Seconds();
+	FNoiseTextureComputeShaderInterface::Dispatch(FNoiseTextureComputeShaderInterface::BuildParams(RenderTarget,(FVector3f)pos,FVector3f(Size.X,Size.Y,1),stepSize,*NoiseSettings),[RenderTarget,Size,stepSize,start,Callback]()	{
+		double end = FPlatformTime::Seconds();
+		UE_LOG(NoiseGenerator,Log,TEXT("UNoise::GenerateTexture ==> Size:%s, RunTime: %fs"),*(Size/stepSize).ToString(),end-start);
+		Callback();
+	});
+}
+
 //3DMaps
 FNoiseMap3d UNoise::GenerateMap3D(FIntVector pos, FIntVector mapSize, int stepSize, FNoiseSettings* NoiseSettings, NoiseDensityFunction DensityFunction)
 {
@@ -525,4 +536,20 @@ FVector2D UNoise::PoissonSample(const FVector2D& center, float minRadius, float 
 TArray<FVector2D> UNoise::PoissonDiscSample(const FVector2D& topLeft, const FVector2D& bottomRight, float minDist, int newPointsCount)
 {
 	return Poisson::GeneratePoissonDiscSamples(topLeft,bottomRight,minDist,newPointsCount);
+}
+
+
+UTextureRenderTarget2D* UNoise::CreateRenderTarget(FIntVector2 Size, ETextureRenderTargetFormat Format)
+{
+	// Create the render target
+	UTextureRenderTarget2D* RenderTarget = NewObject<UTextureRenderTarget2D>();
+    
+	// Set the render target properties
+	RenderTarget->RenderTargetFormat = Format;
+	RenderTarget->InitAutoFormat(Size.X, Size.Y);
+	RenderTarget->ClearColor = FLinearColor::Black;
+	RenderTarget->bAutoGenerateMips = false;
+	RenderTarget->UpdateResourceImmediate(true);
+
+	return RenderTarget;
 }
