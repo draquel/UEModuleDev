@@ -81,9 +81,6 @@ struct FNoiseSettings
 {
 	GENERATED_BODY()
 
-	UPROPERTY(BlueprintReadWrite)
-	TEnumAsByte<NoiseMode> mode;
-	
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	TEnumAsByte<NoiseSource> source;
 	
@@ -129,9 +126,8 @@ struct FNoiseSettings
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	UCurveFloat* curve;
 
-	explicit FNoiseSettings(NoiseMode InMode = D2) 
+	explicit FNoiseSettings() 
 	{
-		mode = InMode;
 		source = CPU;
 		type = Simplex;
 		filter = NoFilter;
@@ -172,6 +168,17 @@ struct FNoiseSettings
 			domainWarpingScale == other.domainWarpingScale &&
 			curve == other.curve
 		) {	return true; }
+		return false;
+	}
+
+	static bool Compare(TArray<FNoiseSettings> a, TArray<FNoiseSettings> b)
+	{
+		if (a.Num() == b.Num()) {
+			for (int i = 0; i < a.Num(); i++) {
+				if (a[i] != b[i]){ return false; }
+			}
+			return true;
+		}
 		return false;
 	}
 };
