@@ -73,7 +73,11 @@
 		},
 		{
 			"Name": "ShaderLib",
-			"Enabled": false 
+			"Enabled": false
+		},
+		{
+			"Name": "PCG",
+			"Enabled": true
 		}
 	]
 }
