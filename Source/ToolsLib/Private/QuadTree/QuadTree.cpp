@@ -1,11 +1,13 @@
 #include "QuadTree/QuadTree.h"
 
-QuadTree::QuadTree()
+#include "ToolsLib.h"
+
+UQuadTree::UQuadTree()
 {
 	
 }
 
-QuadTree::QuadTree(FVector position, FVector size, FQuadTreeSettings settings)
+UQuadTree::UQuadTree(FVector position, FVector size, FQuadTreeSettings settings)
 {
 	Position = position;
 	Size = size;
@@ -14,7 +16,7 @@ QuadTree::QuadTree(FVector position, FVector size, FQuadTreeSettings settings)
 	Center = Position + (size / 2);
 }
 
-void QuadTree::GenerateTree(FVector viewerPosition)
+void UQuadTree::GenerateTree(FVector viewerPosition)
 {
 	double start = FPlatformTime::Seconds();
 	Leaves.Reset();
@@ -24,10 +26,10 @@ void QuadTree::GenerateTree(FVector viewerPosition)
 		Leaves[i].CheckNeighbors();
 	}
 	double end = FPlatformTime::Seconds();
-	//UE_LOG(LogTemp,Log,TEXT("QuadTree::GenerateTree() => Leaves: %d, Depth: %d, Duration: %f s"),Leaves.Num(),GetDepth(),end-start);
+	UE_LOG(QuadTree,Log,TEXT("QuadTree::GenerateTree() ==> Leaves: %d, Depth: %d, RunTime: %f s"),Leaves.Num(),GetDepth(),end-start);
 }
 
-int QuadTree::GetDepth()
+int UQuadTree::GetDepth()
 {
 	int depth = 0;
 	for(int i = 0; i < Leaves.Num(); i++) {
@@ -38,7 +40,21 @@ int QuadTree::GetDepth()
 	return depth;
 }
 
-void QuadTree::UpdateSettings(FQuadTreeSettings settings)
+void UQuadTree::UpdateSettings(FQuadTreeSettings settings)
 {
 	Settings = settings;
+}
+
+int UQuadTree::CountVerts(TArray<QuadTreeNode> nodes)
+{
+	int count = 0;
+	for (int i = 0; i < nodes.Num(); i++) {
+		int nCount = 0;
+		nCount += nodes[i].Neighbors[0] ? 1 : 0;
+		nCount += nodes[i].Neighbors[1] ? 1 : 0;
+		nCount += nodes[i].Neighbors[2] ? 1 : 0;
+		nCount += nodes[i].Neighbors[3] ? 1 : 0;
+		count += 9 - nCount;
+	}
+	return count;
 }

@@ -1,5 +1,4 @@
 #pragma once
-
 #include "QuadTreeSettings.generated.h"
 
 USTRUCT(BlueprintType)
@@ -21,3 +20,4 @@ struct TOOLSLIB_API FQuadTreeSettings
 		DistanceModifier = 8;
 	}
 };
+

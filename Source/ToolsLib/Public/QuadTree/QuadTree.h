@@ -1,16 +1,13 @@
 #pragma once
 
 #include "QuadTreeNode.h"
-#include "QuadTree/QuadTreeSettings.h"
+#include "QuadTreeSettings.h"
 
-struct FNoiseSettings;
-class QuadTreeNode;
-
-class TOOLSLIB_API QuadTree
+class TOOLSLIB_API UQuadTree 
 {
 public:
-	QuadTree();
-	QuadTree(FVector position, FVector size, FQuadTreeSettings settings);
+	UQuadTree();
+	UQuadTree(FVector position, FVector size, FQuadTreeSettings settings);
 	QuadTreeNode RootNode;
 
 	TArray<QuadTreeNode> Leaves;
@@ -24,4 +21,6 @@ public:
 	void GenerateTree(FVector viewerPosition);
 	int GetDepth();
 	void UpdateSettings(FQuadTreeSettings settings);
+
+	static int CountVerts(TArray<QuadTreeNode> nodes);
 };

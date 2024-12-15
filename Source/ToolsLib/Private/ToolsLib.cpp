@@ -1,6 +1,7 @@
 ﻿#include "ToolsLib.h"
 
 #define LOCTEXT_NAMESPACE "FToolsLibModule"
+DEFINE_LOG_CATEGORY(QuadTree);
 
 void FToolsLibModule::StartupModule()
 {
