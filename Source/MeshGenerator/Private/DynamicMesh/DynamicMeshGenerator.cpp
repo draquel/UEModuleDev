@@ -53,7 +53,7 @@ FDynamicMesh3 DynamicMeshGenerator::RectMesh(FVector position, FVector size, FVe
 	return DynamicMesh;
 }
 
-FDynamicMesh3 DynamicMeshGenerator::QuadTreeMesh(QuadTree* QTree, FVector playerPos, float UVScale, int depthFilter, FNoiseSettings* NoiseSettings, int heightMultiplier)
+FDynamicMesh3 DynamicMeshGenerator::QuadTreeMesh(UQuadTree* QTree, FVector playerPos, float UVScale, int depthFilter, FNoiseSettings* NoiseSettings, int heightMultiplier)
 {
 	FDynamicMesh3 DynamicMesh (true,true,true,true);
 	DynamicMesh.EnableAttributes();

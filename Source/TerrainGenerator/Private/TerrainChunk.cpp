@@ -60,7 +60,7 @@ void ATerrainChunk::Init(FVector2D chunkCoord, FTerrainChunkSettings settings)
 	Settings = settings;
 	SetActorLabel(FString::Printf(TEXT("(%lld,%lld)"),FMath::RoundToInt(chunkCoord.X),FMath::RoundToInt(chunkCoord.Y)),false);
 
-	QTree = QuadTree(position,Settings.Size,Settings.QuadTreeSettings);
+	QTree = UQuadTree(position,Settings.Size,Settings.QuadTreeSettings);
 	
 	TerrainMesh->SetMaterial(0,Settings.Material);
 	WaterMesh->SetMaterial(0,Settings.WaterMaterial);

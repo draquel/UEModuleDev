@@ -12,7 +12,6 @@ int StepSize;
 int Mode;
 int DensityFunction;
 
-// Main 2D compute shader function
 [numthreads(THREADS_X, THREADS_Y, THREADS_Z)]
 void NoiseComputeShader(uint3 DispatchThreadId : SV_DispatchThreadID, uint GroupIndex : SV_GroupIndex )
 {

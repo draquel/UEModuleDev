@@ -28,8 +28,8 @@ void ANoiseExample::Regenerate()
 			});
 			break;
 		case Texture:
-			UTextureRenderTarget2D* RT = CreateRenderTarget(TextureSize, RTF_RGBA8);
-			FNoiseTextureComputeShaderDispatchParams Params = FNoiseTextureComputeShaderInterface::BuildParams(RT,(FVector3f)GetActorLocation(),FVector3f(TextureSize.X,TextureSize.Y,1),StepSize,NoiseSettings);
+			UTextureRenderTarget2D* RT = CreateRenderTarget(TextureSize/StepSize, RTF_R16f);
+			FNoiseTextureComputeShaderDispatchParams Params = FNoiseTextureComputeShaderInterface::BuildParams(RT,(FVector3f)GetActorLocation(),FVector3f(TextureSize.X/StepSize,TextureSize.Y/StepSize,1),StepSize,NoiseSettings);
 			FNoiseTextureComputeShaderInterface::Dispatch(Params,[this,RT]()	{
 				UTexture2D* texture = RT->ConstructTexture2D(GetWorld(), "SavedDataTexture", RF_Public | RF_Standalone);
 				SetTexture(texture);
@@ -73,6 +73,7 @@ UTextureRenderTarget2D* ANoiseExample::CreateRenderTarget(FIntVector2 Size, ETex
 
 	return RenderTarget;
 }
+
 void ANoiseExample::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);

@@ -90,7 +90,7 @@ protected:
 	
 	virtual void OnConstruction(const FTransform& Transform) override;
 	
-	QuadTree QTree;
+	UQuadTree QTree;
 
 	void DebugDrawBounds(float life = 30, FColor color = FColor::Red);
 	void DebugDrawPositionMarker(float life = 30, FColor color = FColor::Red);

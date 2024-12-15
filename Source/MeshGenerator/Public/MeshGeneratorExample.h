@@ -6,8 +6,11 @@
 #include "Noise.h"
 #include "NoiseSettings.h"
 #include "ProceduralMeshComponent.h"
+#include "Engine/TextureRenderTarget2D.h"
 #include "GameFramework/Actor.h"
+#include "MarchingCubes/MarchingCubes.h"
 #include "MeshData/MeshData.h"
+#include "QuadTree/QuadTree.h"
 #include "QuadTree/QuadTreeSettings.h"
 #include "MeshGeneratorExample.generated.h"
 
@@ -17,6 +20,13 @@ enum EMeshExampleMode {
 	Rect_2D = 0,
 	QuadTree_2D = 1,
 	MarchingCubes_3D = 2,
+};
+
+UENUM(BlueprintType)
+enum E2DMeshExampleMode
+{
+	NoiseMap = 0,
+	RenderTexture = 1
 };
 
 UCLASS()
@@ -30,46 +40,50 @@ public:
 
 	UPROPERTY(VisibleAnywhere)
 	UProceduralMeshComponent* Mesh;
-
-	UPROPERTY(EditAnywhere)
-	TEnumAsByte<EMeshExampleMode> Mode;
-	
 	UPROPERTY(EditAnywhere)
 	UMaterial* Material;
+
+	UPROPERTY(EditAnywhere)
+	UTexture2D* NoiseTexture;
+	
 	UPROPERTY(EditAnywhere)
 	float UVScale = 1.0f;
 	
 	UPROPERTY(EditAnywhere)
+	TEnumAsByte<EMeshExampleMode> Mode;
+	UPROPERTY(EditAnywhere)
+	TEnumAsByte<E2DMeshExampleMode> DataMode2D;	
+	UPROPERTY(EditAnywhere)
 	FVector Size;
 	UPROPERTY(EditAnywhere)
 	int StepSize;
+
+	UPROPERTY(EditAnywhere)
+	int RectMesh_StepSize;
 	
 	UPROPERTY(EditAnywhere)
-	float isoLevel = 0.5f;
+	bool autoUpdate = false;
+	
 	UPROPERTY(EditAnywhere)
-	bool interpolate = false;
-	UPROPERTY(EditAnywhere)
-	bool showSides = false;
+	FMarchingCubesSettings MarchingCubesSettings;
 
 	UPROPERTY(EditAnywhere)
 	FQuadTreeSettings QuadTreeSettings;
 	
 	UPROPERTY(EditAnywhere)
-	bool autoUpdate = false;
-
-	UPROPERTY(EditAnywhere)
 	TArray<FNoiseSettings> NoiseSettings2D;
 
 	UPROPERTY(EditAnywhere)
 	TArray<FNoiseSettings> NoiseSettings3D;
-	// FNoiseSettings NoiseSettings = FNoiseSettings(D3);
 
+	UPROPERTY(VisibleAnywhere)
+	TArray<FNoiseSettings> LastNoiseSettings;
+
+protected:
+	
 	UPROPERTY(Transient)
 	bool bHasBeenConstructed = false;
 	
-
-protected:
-	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
 
 	UFUNCTION(CallInEditor,meta=(Category="MeshGeneratorExample"))
@@ -95,6 +109,7 @@ public:
 	UFUNCTION(CallInEditor,meta=(Category="MeshGeneratorExample"))
 	void Clear();
 	FVector GetPlayerPos() const;
+	UTextureRenderTarget2D* CreateRenderTarget(ETextureRenderTargetFormat Format);
 };
 
 

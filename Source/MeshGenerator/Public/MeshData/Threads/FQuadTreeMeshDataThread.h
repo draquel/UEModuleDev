@@ -3,12 +3,12 @@
 #include "MeshData/MeshData.h"
 
 struct FNoiseSettings;
-class QuadTree;
+class UQuadTree;
 
 class MESHGENERATOR_API FQuadTreeMeshDataThread : public FRunnable {
 
 public:
-	FQuadTreeMeshDataThread(UProceduralMeshComponent* component, QuadTree* qtree, float uvScale, int depthFilter,int section, bool collision, FNoiseSettings* noiseSettings, int heightMultiplier) {
+	FQuadTreeMeshDataThread(UProceduralMeshComponent* component, UQuadTree* qtree, float uvScale, int depthFilter,int section, bool collision, FNoiseSettings* noiseSettings, int heightMultiplier) {
 		Component = component;
 		QTree = qtree;
 		UVScale = uvScale;
@@ -31,7 +31,7 @@ public:
 	}
 
 	UProceduralMeshComponent* Component;
-	QuadTree* QTree;
+	UQuadTree* QTree;
 	float UVScale;
 	int depthFilter;
 	FNoiseSettings* NoiseSettings;
