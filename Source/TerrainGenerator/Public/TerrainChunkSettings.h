@@ -2,6 +2,7 @@
 #include "CoreMinimal.h"
 #include "NoiseSettings.h"
 #include "QuadTree/QuadTreeSettings.h"
+#include "Structs/MinMax.h"
 #include "TerrainChunkSettings.generated.h"
 
 /*
@@ -30,6 +31,12 @@ struct FFoliageGroupSettings
 	UPROPERTY(EditAnywhere)
 	FVector FoliageOffset = FVector::Zero();
 
+	UPROPERTY(EditAnywhere)
+	FMinMax ElevationMinMax;
+
+	UPROPERTY(EditAnywhere)
+	FMinMax SlopeMinMax;
+	
 	UPROPERTY(EditAnywhere)
 	TArray<UStaticMesh*> Foliage;
 
@@ -84,10 +91,13 @@ USTRUCT(BlueprintType)
 struct FTerrainChunkSettings
 {
 	GENERATED_BODY()
-
+	
 	UPROPERTY(EditAnywhere)
-	FVector Size = FVector(6400,6400,2000);
-
+	int32 NoiseStepSize = 100;
+	
+	UPROPERTY(EditAnywhere)
+	FVector Size = FVector(6400,6400,12800);
+	
 	UPROPERTY(EditAnywhere)
 	int32 WaterResolution = 20;
 
@@ -119,10 +129,7 @@ struct FTerrainChunkSettings
 	TArray<FFoliageGroupSettings> FoliageGroups;
 	
 	UPROPERTY(EditAnywhere)
-	FNoiseSettings NoiseSettings;
-
-	// UPROPERTY(EditAnywhere)
-	// FTerrainNoiseSettings TerrainNoiseSettings;
+	TArray<FNoiseSettings> NoiseSettings;
 
 	UPROPERTY(EditAnywhere)
 	int32 MeshResolution = 64;

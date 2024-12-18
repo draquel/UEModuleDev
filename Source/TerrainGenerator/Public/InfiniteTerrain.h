@@ -69,6 +69,9 @@ protected:
 	void UpdateChunks();
 
 	UFUNCTION(CallInEditor, meta=(Category="InfiniteTerrain"))
+	void UpdateFoliage();
+	
+	UFUNCTION(CallInEditor, meta=(Category="InfiniteTerrain"))
 	void ClearChunks();
 	
 	void ClearQueues();
@@ -80,5 +83,6 @@ protected:
 
 public:	
 	virtual void Tick(float DeltaTime) override;
+	void ProcessChunkQueues(bool allowThreads);
 	FVector GetPlayerPos() const;
 };

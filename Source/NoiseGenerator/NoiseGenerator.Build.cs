@@ -6,18 +6,18 @@ public class NoiseGenerator : ModuleRules
     {
         PCHUsage = ModuleRules.PCHUsageMode.UseExplicitOrSharedPCHs;
 
-        PrivateIncludePaths.AddRange(new string[] 
-        {
-            "Runtime/Renderer/Private",
-            "ComputeShaders/Private"
-        });
+        // PrivateIncludePaths.AddRange(new string[] 
+        // {
+        //     "Runtime/Renderer/Private",
+        //     "ComputeShaders/Private"
+        // });
         
         PublicDependencyModuleNames.AddRange(
             new string[]
             {
                 "Core",
                 "Engine",
-                "MaterialShaderQualitySettings"
+                "MaterialShaderQualitySettings", "ToolsLib", "ProceduralMeshComponent"
             }
         );
 

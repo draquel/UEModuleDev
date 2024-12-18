@@ -11,6 +11,7 @@
 #include "TerrainChunk.generated.h"
 
 class FPoissonGeneratorThread;
+class FNoiseTextureThread;
 
 USTRUCT()
 struct FTerrainEvaluationData
@@ -31,6 +32,7 @@ public:
 	ATerrainChunk();
 	static bool EvaluateTerrain(FVector pos, FNoiseSettings* NoiseSettings, int heightMultiplier, FVector2D elevationLimits, FVector2D slopeLimits, FTerrainEvaluationData* data);
 	static float EvaluateSlope(FVector pos, FNoiseSettings* NoiseSettings, int heightMultiplier);
+	bool EvaluateTerrain(UTexture2D* Texture, FVector pos, int heightMultiplier, FVector2D elevationLimits, FVector2D slopeLimits, FTerrainEvaluationData* data);
 
 	UPROPERTY(EditAnywhere)
 	FVector2D Coord;
@@ -55,7 +57,13 @@ public:
 
 	UPROPERTY(VisibleAnywhere)
 	UDecalComponent* WaterCausticsDecal;
+	
+	UPROPERTY(EditAnywhere)
+	UTexture2D* NoiseTexture;
 
+	UPROPERTY(EditAnywhere)
+	FMinMax NoiseMinMax;
+	
 	bool hasWater = false;
 
 	virtual void Tick(float DeltaTime) override;
@@ -69,17 +77,19 @@ public:
 	void Update(FVector playerPos = FVector(),bool allowThreads = true);
 	void Disable();
 	void Enable();
-	
+	void GenerateNoise(FVector playerPos, bool allowThread);
+
 	void CreateTerrainMesh(FVector playerPos, bool allowThread = true);
 	void CreateQuadtreeMesh(FVector playerPos, bool allowThread = true);
 	void CreateRectMesh(bool allowThread = true);
 	void CreateWaterMesh(bool allowThread = true);
-	void CreateFoliage(FVector playerPos);
-	void InstanceFoliage(TArray<UInstancedStaticMeshComponent*>* StaticMeshComponents, TArray<UStaticMesh*>* Foliage, TArray<FVector2D>* Points, FVector Offset, FVector Scale, bool Collision);
+	void CreateFoliage(FVector playerPos, bool allowThread, bool regenerate = false);
+	void InstanceFoliage(TArray<UInstancedStaticMeshComponent*>* StaticMeshComponents, TArray<UStaticMesh*>* Foliage, TArray<FVector2D>* Points, FVector Offset, FVector Scale, FMinMax ElevationMinMax, FMinMax SlopeMinMax, bool Collision);
 	void InstanceFoliage(FFoliageGroupData* FoliageGroupData, FFoliageGroupSettings* FoliageGroupSettings);
 
 	UFUNCTION(BlueprintCallable)
 	void DebugDraw(float life = 30, FColor color = FColor::Red);
+	float EvaluateSlope(UTexture2D* Texture, FVector pos, int heightMultiplier);
 	UFUNCTION(BlueprintCallable)
 	static FVector CoordToPos(FVector2D chunkCoord, int chunkSize);
 	UFUNCTION(BlueprintCallable)
@@ -95,6 +105,7 @@ protected:
 	void DebugDrawBounds(float life = 30, FColor color = FColor::Red);
 	void DebugDrawPositionMarker(float life = 30, FColor color = FColor::Red);
 
+	FNoiseTextureThread* NoiseTextureThread;
 	FQuadTreeMeshDataThread* QuadTreeMeshDataThread;
 	FRectMeshDataThread* RectMeshDataThread;
 	FRectMeshDataThread* WaterMeshDataThread;
