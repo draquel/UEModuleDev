@@ -1,0 +1,75 @@
+#include "/Engine/Public/Platform.ush"
+#include "NoiseGenerator/Shaders/Private/Noise.usf"
+
+struct QuadTreeLeaf
+{
+	float3 center;
+	float3 size;
+	int depth;
+	float4 neighbors;
+};
+
+RWBuffer<float3> VerticiesBuffer;
+RWBuffer<int> TrianglesBuffer;
+int vertCount;
+int triCount;
+
+StructuredBuffer<ShaderNoiseSettings> NoiseSettings;
+StructuredBuffer<QuadTreeLeaf> Leaves;
+
+int SettingsCount;
+int LeafCount;
+float3 Position;
+float3 Size;
+
+float UVScale;
+int DepthFilter;
+int HeightMultiplier;
+
+float LocalizePos(float input, float size)
+{
+	int res = input % size;
+	if(input < 0) {
+		res += size;
+	}
+	return res;
+}
+
+float CalcLayeredNoise(float3 Position, StructuredBuffer<ShaderNoiseSettings> NoiseSettings, int SettingsCount)
+{
+	float noise = 0;
+	for (int i = 0; i < SettingsCount; i++)	{
+		ShaderNoiseSettings Settings = NoiseSettings[i];
+		gain += Settings.Gain;
+		noise += Noise(float2(0,0),Position,Settings) * Settings.Gain;
+	}
+	noise /= gain;
+	return noise;
+}
+
+// Main 2D compute shader function
+[numthreads(THREADS_X, THREADS_Y, THREADS_Z)]
+void NoiseComputeShader(uint3 DispatchThreadId : SV_DispatchThreadID, uint GroupIndex : SV_GroupIndex )
+{
+	int leafIndex = DispatchThreadId.x + DispatchThreadId.y * DispatchThreadId.z;
+	if (leafIndex >= LeafCount) return;
+
+	QuadTreeLeaf leaf = Leaves[leafIndex];
+	float3 posCorner = Position + Size;
+
+	float posx = leaf.center.x + leaf.size.x * 0.5f;
+	float negx = leaf.center.x - leaf.size.x * 0.5f;
+	float posy = leaf.center.y + leaf.size.y * 0.5f;
+	float negy = leaf.center.y - leaf.size.y * 0.5f;
+
+	float lzerox = LocalizePos(leaf.center.x, Size.x);
+	float lzeroy = LocalizePos(leaf.center.y, Size.y);
+	float lposx = posx == posCorner.X ? Size.x : LocalizePos(leaf.center.x + leaf.size.x * 0.5f, Size.x);
+	float lnegx = negx == Position.X ? 0 : LocalizePos(leaf.center.x - leaf.size.x, Size.x);
+	float lposy = posy == posCorner.Y ? Size.y : LocalizePos(leaf.center.y + leaf.size.y * 0.5f, Size.y);
+	float lnegy = negy == Position.Y ? 0 : LocalizePos(leaf.center.y - leaf.size.y, Size.y);
+
+	float z = CalcLayeredNoise(float3(leaf.center.x, leaf.center.y, 1),NoiseSettings,SettingsCount) * HeightMultiplier;
+	VerticiesBuffer[leafIndex];
+	
+}
