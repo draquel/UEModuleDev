@@ -6,7 +6,8 @@ bool FQuadTreeMeshDataThread::Init() {
 }
 
 uint32 FQuadTreeMeshDataThread::Run() {
-	MeshData = UMeshDataGenerator::QuadTreeMesh(QTree,UVScale,depthFilter,NoiseSettings,heightMultiplier);
+	// MeshData = UMeshDataGenerator::QuadTreeMesh(QTree,UVScale,depthFilter,NoiseSettings,heightMultiplier);
+	MeshData = UMeshDataGenerator::QuadTreeMesh(NoiseTexture,QTree,100,UVScale,depthFilter,heightMultiplier);
 	bDataReady = true;
 	//UE_LOG(LogTemp,Log,TEXT("FQuadTreeMeshDataThread:Run() => Verticies: %d, Triangles: %d"),MeshData.Vertices.Num(),MeshData.Triangles.Num());
 	return 0;

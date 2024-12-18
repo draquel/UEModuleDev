@@ -11,7 +11,7 @@ uint32 FRectMeshDataThread::Run() {
 	if(withNoise) {
 		MeshData = UMeshDataGenerator::RectMesh(Position, Size, Segments, UVScale,NoiseSettings,HeightMultiplier);
 	} else {
-		MeshData = UMeshDataGenerator::RectMesh(Position, Size, Segments, UVScale);
+		MeshData = UMeshDataGenerator::RectMesh(Position, Size, Segments, UVScale,nullptr,0);
 	}
 	bDataReady = true;
 	//UE_LOG(LogTemp,Log,TEXT("FRectMeshDataThread:Run() => Verticies: %d, Triangles: %d"),MeshData.Vertices.Num(),MeshData.Triangles.Num());

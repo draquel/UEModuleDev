@@ -17,7 +17,8 @@ public:
 	FVector Size;
 
 	FQuadTreeSettings Settings;
-	
+
+	void Init(FVector position, FVector size, FQuadTreeSettings settings);
 	void GenerateTree(FVector viewerPosition);
 	int GetDepth();
 	void UpdateSettings(FQuadTreeSettings settings);

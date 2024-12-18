@@ -8,12 +8,12 @@ class UQuadTree;
 class MESHGENERATOR_API FQuadTreeMeshDataThread : public FRunnable {
 
 public:
-	FQuadTreeMeshDataThread(UProceduralMeshComponent* component, UQuadTree* qtree, float uvScale, int depthFilter,int section, bool collision, FNoiseSettings* noiseSettings, int heightMultiplier) {
+	FQuadTreeMeshDataThread(UProceduralMeshComponent* component, UQuadTree* qtree, float uvScale, int depthFilter,int section, bool collision, UTexture2D* NoiseTexture, int heightMultiplier) {
 		Component = component;
 		QTree = qtree;
 		UVScale = uvScale;
 		this->depthFilter = depthFilter;
-		NoiseSettings = noiseSettings;
+		this->NoiseTexture = NoiseTexture;
 		this->heightMultiplier = heightMultiplier;
 		Section = section;
 		Collision = collision;
@@ -35,6 +35,7 @@ public:
 	float UVScale;
 	int depthFilter;
 	FNoiseSettings* NoiseSettings;
+	UTexture2D* NoiseTexture;
 	int heightMultiplier;
 	bool Collision = false;
 	int Section = false;

@@ -16,6 +16,13 @@ UQuadTree::UQuadTree(FVector position, FVector size, FQuadTreeSettings settings)
 	Center = Position + (size / 2);
 }
 
+void UQuadTree::Init(FVector position, FVector size, FQuadTreeSettings settings)
+{
+	Position = position;
+	Size = size;
+	Settings = settings;
+}
+
 void UQuadTree::GenerateTree(FVector viewerPosition)
 {
 	double start = FPlatformTime::Seconds();

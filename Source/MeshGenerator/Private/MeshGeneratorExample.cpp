@@ -1,12 +1,9 @@
 #include "MeshGeneratorExample.h"
-
 #include "LevelEditorViewport.h"
 #include "MeshGenerator.h"
 #include "Noise.h"
 #include "Engine/TextureRenderTarget2D.h"
-
 #include "MeshData/MeshDataGenerator.h"
-#include "NoiseTextureComputeShader/NoiseTextureComputeShader.h"
 
 
 // Sets default values
@@ -28,82 +25,88 @@ void AMeshGeneratorExample::BeginPlay()
 	Generate();
 }
 
-void AMeshGeneratorExample::Generate()
+void AMeshGeneratorExample::GenerateRect()
 {
 	double start = FPlatformTime::Seconds();
-	Mesh->SetMaterial(0,Material);
 	UTextureRenderTarget2D* RT = CreateRenderTarget(RTF_R16f);
+	if (DataMode2D == RenderTexture) {
+		bool GenerateNoiseMap = false;
+		if (NoiseTexture == nullptr || !FNoiseSettings::Compare(LastNoiseSettings, NoiseSettings2D)) { GenerateNoiseMap = true;	}
+		if (GenerateNoiseMap)
+		{
+			UNoise::GenerateTexture(RT,(FIntVector)GetActorLocation(),FIntVector2(Size.X,Size.Y),StepSize,&NoiseSettings2D,[this,RT,start]() {
+				NoiseTexture = RT->ConstructTexture2D(GetWorld(), "SavedDataTexture", RF_Public | RF_Standalone);
+				FMeshData Data = UMeshDataGenerator::RectMesh(NoiseTexture,GetActorLocation(),Size,RectMesh_StepSize,StepSize,UVScale,FMath::FloorToInt(Size.Z));
+				UpdateMesh(&Data);
+				double end = FPlatformTime::Seconds();
+				UE_LOG(MeshGenerator,Log,TEXT("AMeshGeneratorExample::Generate ==> Rect_2D RenderTexture[Gen] ==> Size:%s, RunTime: %fs"),*(Size/StepSize).ToString(),end-start);
+			});
+		}else {
+			FMeshData Data = UMeshDataGenerator::RectMesh(NoiseTexture,GetActorLocation(),Size,RectMesh_StepSize,StepSize,UVScale, FMath::FloorToInt(Size.Z));
+			UpdateMesh(&Data);		
+			double end = FPlatformTime::Seconds();
+			UE_LOG(MeshGenerator,Log,TEXT("AMeshGeneratorExample::Generate ==> Rect_2D RenderTexture[Regen] ==> Size:%s, RunTime: %fs"),*(Size/StepSize).ToString(),end-start);
+		}
+	}
+	if (DataMode2D == NoiseMap)	{
+		UNoise::GenerateMap2D((FIntVector)GetActorLocation(),FIntVector2(Size.X+StepSize,Size.Y+StepSize),StepSize,NoiseSettings2D,[this,start](FNoiseMap2d* NoiseMap) {
+			this->NoiseMap2D = NoiseMap;
+			FMeshData Data = UMeshDataGenerator::RectMesh(NoiseMap2D,GetActorLocation(),Size,RectMesh_StepSize,UVScale, FMath::FloorToInt(Size.Z));
+			UpdateMesh(&Data);	
+			double end = FPlatformTime::Seconds();
+			UE_LOG(MeshGenerator,Log,TEXT("AMeshGeneratorExample::Generate ==> Rect_2D NoiseMap ==> Size:%s, RunTime: %fs"),*(Size/StepSize).ToString(),end-start);
+		});
+	}
+	LastNoiseSettings = NoiseSettings2D;	
+}
+void AMeshGeneratorExample::GenerateQuadTree()
+{
+	double start = FPlatformTime::Seconds();
+	UTextureRenderTarget2D* RT = CreateRenderTarget(RTF_R16f);
+	QuadTree = UQuadTree(GetActorLocation(), (FVector)Size, QuadTreeSettings);
+	QuadTree.GenerateTree(GetActorLocation());
+
+	if (DataMode2D == RenderTexture) {
+		bool GenerateNoiseMap = false;
+		if (NoiseTexture == nullptr || !FNoiseSettings::Compare(LastNoiseSettings, NoiseSettings2D)) { GenerateNoiseMap = true;	}
+		if (GenerateNoiseMap) {
+			UNoise::GenerateTexture(RT,(FIntVector)GetActorLocation(),FIntVector2(Size.X,Size.Y),StepSize,&NoiseSettings2D,[this,RT,start]() {
+				NoiseTexture = RT->ConstructTexture2D(GetWorld(), "SavedDataTexture", RF_Public | RF_Standalone);
+				FMeshData Data = UMeshDataGenerator::QuadTreeMesh(NoiseTexture,&QuadTree,StepSize,UVScale, 0,FMath::FloorToInt(Size.Z));
+				UpdateMesh(&Data);
+				double end = FPlatformTime::Seconds();
+				UE_LOG(MeshGenerator,Log,TEXT("AMeshGeneratorExample::Generate ==> QuadTree_2D RenderTexture[Gen] ==> Size:%s, RunTime: %fs"),*(Size/StepSize).ToString(),end-start);
+			});	
+		}else{
+			FMeshData Data = UMeshDataGenerator::QuadTreeMesh(NoiseTexture,&QuadTree,StepSize,UVScale, 0,FMath::FloorToInt(Size.Z));
+			UpdateMesh(&Data);
+			double end = FPlatformTime::Seconds();
+			UE_LOG(MeshGenerator,Log,TEXT("AMeshGeneratorExample::Generate ==> QuadTree_2D RenderTexture[Regen] ==> Size:%s, RunTime: %fs"),*(Size/StepSize).ToString(),end-start);
+		}
+	}
+	
+	if (DataMode2D == NoiseMap)
+	{
+		UNoise::GenerateMap2D((FIntVector)GetActorLocation(),FIntVector2(Size.X+StepSize,Size.Y+StepSize),StepSize,NoiseSettings2D,[this,start](FNoiseMap2d* NoiseMap)	{
+			this->NoiseMap2D = NoiseMap; 
+			FMeshData Data = UMeshDataGenerator::QuadTreeMesh(NoiseMap2D,&QuadTree,UVScale,0,(int)FMath::FloorToInt(Size.Z));
+			UpdateMesh(&Data);	
+			double end = FPlatformTime::Seconds();
+			UE_LOG(MeshGenerator,Log,TEXT("AMeshGeneratorExample::Generate ==> QuadTree_2D NoiseMap ==> Size:%s, RunTime: %fs"),*(Size/StepSize).ToString(),end-start);
+		});	
+	}
+	LastNoiseSettings = NoiseSettings2D;	
+}
+void AMeshGeneratorExample::Generate()
+{
+	Mesh->SetMaterial(0,Material);
 	switch (Mode) {
 		default:
 		case 0:
-			if (DataMode2D == RenderTexture) {
-				bool GenerateNoiseMap = false;
-				if (NoiseTexture == nullptr || !FNoiseSettings::Compare(LastNoiseSettings, NoiseSettings2D)) { GenerateNoiseMap = true;	}
-				if (GenerateNoiseMap)
-				{
-					UNoise::GenerateTexture(RT,(FIntVector)GetActorLocation(),FIntVector2(Size.X,Size.Y),StepSize,&NoiseSettings2D,[this,RT,start]() {
-						NoiseTexture = RT->ConstructTexture2D(GetWorld(), "SavedDataTexture", RF_Public | RF_Standalone);
-						FMeshData Data = UMeshDataGenerator::RectMesh(NoiseTexture,GetActorLocation(),Size,RectMesh_StepSize,StepSize,UVScale,FMath::FloorToInt(Size.Z));
-						UpdateMesh(&Data);
-						double end = FPlatformTime::Seconds();
-						UE_LOG(MeshGenerator,Log,TEXT("AMeshGeneratorExample::Generate ==> Rect_2D RenderTexture[Gen] ==> Size:%s, RunTime: %fs"),*(Size/StepSize).ToString(),end-start);
-					});
-				}else {
-					FMeshData Data = UMeshDataGenerator::RectMesh(NoiseTexture,GetActorLocation(),Size,RectMesh_StepSize,StepSize,UVScale, FMath::FloorToInt(Size.Z));
-					UpdateMesh(&Data);		
-					double end = FPlatformTime::Seconds();
-					UE_LOG(MeshGenerator,Log,TEXT("AMeshGeneratorExample::Generate ==> Rect_2D RenderTexture[Regen] ==> Size:%s, RunTime: %fs"),*(Size/StepSize).ToString(),end-start);
-				}
-			}
-			if (DataMode2D == NoiseMap)	{
-				UNoise::GenerateMap2D((FIntVector)GetActorLocation(),FIntVector2(Size.X+StepSize,Size.Y+StepSize)/StepSize,StepSize,NoiseSettings2D,[this,start](FNoiseMap2d NoiseMap) {
-					this->NoiseMap2D = &NoiseMap;
-					FMeshData Data = UMeshDataGenerator::RectMesh(NoiseMap2D,GetActorLocation(),Size,UVScale,FMath::FloorToInt(Size.Z));
-					UpdateMesh(&Data);	
-					double end = FPlatformTime::Seconds();
-					UE_LOG(MeshGenerator,Log,TEXT("AMeshGeneratorExample::Generate ==> Rect_2D NoiseMap ==> Size:%s, RunTime: %fs"),*(Size/StepSize).ToString(),end-start);
-				});
-			}
-			LastNoiseSettings = NoiseSettings2D;
+			GenerateRect();
 			break;
 		case 1:
-			if (DataMode2D == RenderTexture) {
-				bool GenerateNoiseMap = false;
-				if (NoiseTexture == nullptr || !FNoiseSettings::Compare(LastNoiseSettings, NoiseSettings2D)) { GenerateNoiseMap = true;	}
-				if (GenerateNoiseMap) {
-					UNoise::GenerateTexture(RT,(FIntVector)GetActorLocation(),FIntVector2(Size.X,Size.Y),StepSize,&NoiseSettings2D,[this,RT,start]() {
-						UQuadTree QuadTree = UQuadTree(GetActorLocation(),Size,QuadTreeSettings);
-						QuadTree.GenerateTree(GetActorLocation());
-					
-						NoiseTexture = RT->ConstructTexture2D(GetWorld(), "SavedDataTexture", RF_Public | RF_Standalone);
-						FMeshData Data = UMeshDataGenerator::QuadTreeMesh(NoiseTexture,&QuadTree,StepSize,UVScale, 0,FMath::FloorToInt(Size.Z));
-						UpdateMesh(&Data);
-						double end = FPlatformTime::Seconds();
-						UE_LOG(MeshGenerator,Log,TEXT("AMeshGeneratorExample::Generate ==> QuadTree_2D RenderTexture[Gen] ==> Size:%s, RunTime: %fs"),*(Size/StepSize).ToString(),end-start);
-					});	
-				}else{
-					UQuadTree QuadTree = UQuadTree(GetActorLocation(),Size,QuadTreeSettings);
-					QuadTree.GenerateTree(GetActorLocation());
-					FMeshData Data = UMeshDataGenerator::QuadTreeMesh(NoiseTexture,&QuadTree,StepSize,UVScale, 0,FMath::FloorToInt(Size.Z));
-					UpdateMesh(&Data);
-					double end = FPlatformTime::Seconds();
-					UE_LOG(MeshGenerator,Log,TEXT("AMeshGeneratorExample::Generate ==> QuadTree_2D RenderTexture[Regen] ==> Size:%s, RunTime: %fs"),*(Size/StepSize).ToString(),end-start);
-				}
-			}
-			
-			if (DataMode2D == NoiseMap)
-			{
-				UNoise::GenerateMap2D((FIntVector)GetActorLocation(),FIntVector2(Size.X+StepSize,Size.Y+StepSize),StepSize,NoiseSettings2D,[this,start](FNoiseMap2d NoiseMap)	{
-					this->NoiseMap2D = &NoiseMap; 
-					UQuadTree QuadTree = UQuadTree(GetActorLocation(),Size,QuadTreeSettings);
-					QuadTree.GenerateTree(GetActorLocation());
-					FMeshData Data = UMeshDataGenerator::QuadTreeMesh(NoiseMap2D,&QuadTree,UVScale,0,(int)FMath::FloorToInt(Size.Z));
-					UpdateMesh(&Data);	
-					double end = FPlatformTime::Seconds();
-					UE_LOG(MeshGenerator,Log,TEXT("AMeshGeneratorExample::Generate ==> QuadTree_2D NoiseMap ==> Size:%s, RunTime: %fs"),*(Size/StepSize).ToString(),end-start);
-				});	
-			}
-			LastNoiseSettings = NoiseSettings2D;
+			GenerateQuadTree();
 			break;
 		case 2:
 			UNoise::GenerateMap3D((FIntVector)GetActorLocation(),(FIntVector)(Size+StepSize),StepSize,NoiseSettings3D,Floor,[this](FNoiseMap3d NoiseMap){
@@ -119,11 +122,11 @@ void AMeshGeneratorExample::Generate()
 void AMeshGeneratorExample::Regenerate()
 {
 	FMeshData Data;
-	UQuadTree QuadTree = UQuadTree(GetActorLocation(),Size,QuadTreeSettings);
+	QuadTree = UQuadTree(GetActorLocation(),Size,QuadTreeSettings);
 	switch (Mode) {
 		default:
 		case 0:
-			Data = UMeshDataGenerator::RectMesh(NoiseMap2D,GetActorLocation(),Size,UVScale,FMath::FloorToInt(Size.Z));
+			Data = UMeshDataGenerator::RectMesh(NoiseMap2D,GetActorLocation(),Size,RectMesh_StepSize,UVScale, FMath::FloorToInt(Size.Z));
 			break;
 		case 1:
 			QuadTree.GenerateTree(GetPlayerPos());

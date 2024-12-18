@@ -1,4 +1,4 @@
-#include "PoissonGeneratorThread.h"
+#include "Thread/PoissonGeneratorThread.h"
 
 #include "Noise.h"
 
@@ -18,7 +18,7 @@ void FPoissonGeneratorThread::Exit()
 		for (auto Point : Points) {
 			Data->FoliagePoints.Add(Point);
 		}
-		Chunk->InstanceFoliage(&Data->FoliageInstances,&Settings->Foliage,&Points,Settings->FoliageOffset,Settings->FoliageScale,Settings->EnableCollision);
+		Chunk->InstanceFoliage(&Data->FoliageInstances,&Settings->Foliage,&Points,Settings->FoliageOffset,Settings->FoliageScale,Settings->ElevationMinMax,Settings->SlopeMinMax, Settings->EnableCollision);
 		Data->hasFoliage = true;
 	}); 
 }

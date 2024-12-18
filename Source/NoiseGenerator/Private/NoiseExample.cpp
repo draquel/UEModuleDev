@@ -23,8 +23,8 @@ void ANoiseExample::Regenerate()
 	{
 		default:
 		case Data:
-			UNoise::GenerateMap2D(Position,TextureSize,StepSize,NoiseSettings, [this](FNoiseMap2d NoiseMap) {
-				SetTexture(UNoise::GenerateTexture(&NoiseMap,ColorCurve));	
+			UNoise::GenerateMap2D(Position,TextureSize,StepSize,NoiseSettings, [this](FNoiseMap2d* NoiseMap) {
+				SetTexture(UNoise::GenerateTexture(NoiseMap,ColorCurve));	
 			});
 			break;
 		case Texture:

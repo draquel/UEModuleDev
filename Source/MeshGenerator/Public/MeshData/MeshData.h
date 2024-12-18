@@ -18,6 +18,7 @@ public:
 	TArray<FVector2D> UV0;
 	TArray<FVector> Normals;
 	TArray<FProcMeshTangent> Tangents;
+	TArray<FVector> BorderVertices;
 
 	float UVScale;
 
@@ -56,6 +57,11 @@ public:
 	{
 		Vertices.Add(Position);
 		UV0.Add(FVector2D(Position.X,Position.Y)*UVScale);
+	}
+
+	void AddBorderVertex(FVector Position)
+	{
+		BorderVertices.Add(Position);
 	}
 
 	void CalculateTangents()
@@ -125,7 +131,84 @@ public:
 		}
 		return res;
 	}
+	
+	void GenerateSmoothedNormalsWithBorders(
+		// const TArray<FVector>& Vertices,          // Main mesh vertices
+		// const TArray<int32>& Triangles,           // Triangles for main mesh + border
+		// const TArray<FVector2D>& UV0,             // UVs for main mesh + border
+		// const TArray<FVector>& BorderVertices,    // Border vertices for smoothing
+		TArray<FVector>& OutNormals,              // Output normals for main mesh vertices only
+		TArray<FProcMeshTangent>& OutTangents     // Output tangents for main mesh vertices only
+	)
+	{
+		// Combine main vertices and border vertices
+		TArray<FVector> CombinedVertices = Vertices;
+		CombinedVertices.Append(BorderVertices);
 
+		// Create combined triangles that refer to the combined vertex array
+		TArray<int32> CombinedTriangles = Triangles;
+
+		// Ensure output arrays are cleared
+		OutNormals.Empty();
+		OutTangents.Empty();
+
+		// Create a temporary array for normals, one entry per combined vertex
+		TArray<FVector> CombinedNormals;
+		CombinedNormals.SetNumZeroed(CombinedVertices.Num());
+
+		// Create a temporary array to count contributions to each normal
+		TArray<int32> NormalCounts;
+		NormalCounts.Init(0, CombinedVertices.Num());
+
+		// Calculate face normals and accumulate at each vertex
+		for (int32 i = 0; i < CombinedTriangles.Num(); i += 3)
+		{
+			int32 Index0 = CombinedTriangles[i];
+			int32 Index1 = CombinedTriangles[i + 1];
+			int32 Index2 = CombinedTriangles[i + 2];
+
+			if (CombinedVertices.IsValidIndex(Index0) &&
+				CombinedVertices.IsValidIndex(Index1) &&
+				CombinedVertices.IsValidIndex(Index2))
+			{
+				FVector Vertex0 = CombinedVertices[Index0];
+				FVector Vertex1 = CombinedVertices[Index1];
+				FVector Vertex2 = CombinedVertices[Index2];
+
+				// Compute the face normal
+				FVector Edge1 = Vertex1 - Vertex0;
+				FVector Edge2 = Vertex2 - Vertex0;
+				FVector FaceNormal = FVector::CrossProduct(Edge1, Edge2).GetSafeNormal();
+
+				// Accumulate face normal for each vertex
+				CombinedNormals[Index0] += FaceNormal;
+				CombinedNormals[Index1] += FaceNormal;
+				CombinedNormals[Index2] += FaceNormal;
+
+				// Increment normal counts
+				NormalCounts[Index0]++;
+				NormalCounts[Index1]++;
+				NormalCounts[Index2]++;
+			}
+		}
+
+		// Normalize the accumulated normals
+		for (int32 i = 0; i < CombinedNormals.Num(); i++)
+		{
+			if (NormalCounts[i] > 0)
+			{
+				CombinedNormals[i] = CombinedNormals[i].GetSafeNormal();
+			}
+		}
+
+		// Copy the normals corresponding to the main mesh vertices only
+		OutNormals.Append(CombinedNormals.GetData(), Vertices.Num());
+
+		// Generate tangents using the normals for the main mesh vertices
+		TArray<FVector2D> MainUV0 = UV0;  // Assuming UV0 only corresponds to the main mesh vertices
+		UKismetProceduralMeshLibrary::CalculateTangentsForMesh(Vertices, Triangles, UV0, OutNormals, OutTangents);
+	}
+	
 	static void AverageVertexNormalsByUVPosition(FDynamicMesh3& Mesh)
 	{
 		if (!Mesh.HasAttributes()){	return;	}
@@ -215,3 +298,4 @@ public:
 		Triangles = RemappedTriangles;
 	}
 };
+

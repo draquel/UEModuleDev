@@ -85,6 +85,8 @@ protected:
 	bool bHasBeenConstructed = false;
 	
 	virtual void BeginPlay() override;
+	void GenerateRect();
+	void GenerateQuadTree();
 
 	UFUNCTION(CallInEditor,meta=(Category="MeshGeneratorExample"))
 	void Generate();
@@ -94,6 +96,8 @@ protected:
 	
 	FNoiseMap2d* NoiseMap2D;
 	FNoiseMap3d* NoiseMap3D;
+
+	UQuadTree QuadTree;
 
 public:
 	// Called every frame

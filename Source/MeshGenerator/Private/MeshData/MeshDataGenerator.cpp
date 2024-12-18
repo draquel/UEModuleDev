@@ -3,6 +3,7 @@
 #include "MeshData/MeshData.h"
 #include "Noise.h"
 #include "NoiseSettings.h"
+#include "TextureUtils.h"
 #include "QuadTree/QuadTree.h"
 #include "QuadTree/QuadTreeNode.h"
 #include "MarchingCubes/MarchingCubes.h"
@@ -56,22 +57,24 @@ FMeshData UMeshDataGenerator::RectMesh(FVector position, FVector size, FVector2D
 	return MeshData;
 }
 
-FMeshData UMeshDataGenerator::RectMesh(FNoiseMap2d* NoiseMap, FVector position, FVector size, float UVScale, int heightMultiplier)
+FMeshData UMeshDataGenerator::RectMesh(FNoiseMap2d* NoiseMap, FVector position, FVector size, int stepSize, float UVScale, int heightMultiplier)
 {
 	FMeshData MeshData = FMeshData();
 	MeshData.UVScale = UVScale;
 	double start = FPlatformTime::Seconds();
 
-	FVector segments = size / NoiseMap->StepSize;
+	FVector segments = size / stepSize;
 	
 	for (int x = 0; x <= segments.X; x++) {
 		for(int y = 0; y <= segments.Y; y++) {
 			if(NoiseMap != nullptr) {
-				FIntVector2 pos = FIntVector2(position.X+(NoiseMap->StepSize*x),position.Y+(NoiseMap->StepSize*y));
-				FVector lpos = FVector((NoiseMap->StepSize*x),(NoiseMap->StepSize*y),0);
-				MeshData.AddVertex(FVector(lpos.X,lpos.Y,NoiseMap->Map[pos] * heightMultiplier));
+				FVector lpos = FVector((stepSize*x),(stepSize*y),0);
+				FIntVector2 pos = FIntVector2(position.X+(stepSize*x),position.Y+(stepSize*y));
+				if (NoiseMap->Map.Contains(pos)) {
+					MeshData.AddVertex(FVector(lpos.X,lpos.Y,NoiseMap->Map[pos] * heightMultiplier));
+				}else {	UE_LOG(MeshGenerator,Error,TEXT("MeshGenerator::RectMesh() ==> NoiseMap does not contain Index: %s"),*pos.ToString()); return MeshData; }
 			} else {
-				MeshData.AddVertex (FVector((NoiseMap->StepSize*x),(NoiseMap->StepSize*y),0));
+				MeshData.AddVertex (FVector((stepSize*x),(stepSize*y),0));
 			}
 
 			if(x < segments.X && y < segments.Y) {
@@ -111,8 +114,12 @@ FMeshData UMeshDataGenerator::RectMesh(UTexture2D* Texture, FVector position, FV
 			if(Texture != nullptr) {
 				FVector lpos = FVector((StepSize*x),(StepSize*y),0); //Mesh Local pos
 				FIntVector2 spos = FIntVector2(lpos.X/TextureStepSize,lpos.Y/TextureStepSize); //Texture Sample Pos
-				float noise = SampleTexture(Texture,spos);
-				MeshData.AddVertex(FVector(lpos.X,lpos.Y,noise*heightMultiplier));
+				if (spos.X < 0 || spos.X > Texture->GetSizeX() || spos.Y < 0 || spos.Y > Texture->GetSizeY()) {
+					UE_LOG(MeshGenerator,Error,TEXT("MeshGenerator::RectMesh() ==> Index: %s is outside the bounds of the source Texture."),*spos.ToString());
+					return MeshData;	
+				}
+				float noise = UTextureUtils::SampleTextureR16f(Texture,spos);
+				MeshData.AddVertex(FVector(lpos.X,lpos.Y,noise*heightMultiplier));	
 			} else {
 				MeshData.AddVertex (FVector((StepSize*x),(StepSize*y),0));
 			}
@@ -147,6 +154,82 @@ FMeshData UMeshDataGenerator::RectMesh(UTexture2D* Texture, FVector position, FV
  *	QuadTree Mesh
  *
  **/
+FMeshData UMeshDataGenerator::QuadTreeMesh(UQuadTree* QTree, float UVScale, int depthFilter)
+{
+	FMeshData MeshData = FMeshData();
+	MeshData.UVScale = UVScale;
+	double start = FPlatformTime::Seconds();
+
+	FVector posCorner = QTree->Position + QTree->Size;
+	for (int i = 0; i < QTree->Leaves.Num(); i++) {
+		if(depthFilter != 0 && QTree->Leaves[i].Depth < depthFilter){ continue; }
+
+		//Corners
+		double posX = QTree->Leaves[i].Center.X + QTree->Leaves[i].Size.X * 0.5f;
+		double negX = QTree->Leaves[i].Center.X - QTree->Leaves[i].Size.X * 0.5f;
+		double posY = QTree->Leaves[i].Center.Y + QTree->Leaves[i].Size.Y * 0.5f;
+		double negY = QTree->Leaves[i].Center.Y - QTree->Leaves[i].Size.Y * 0.5f;
+
+		double lzeroX = FMeshData::LocalizePos(QTree->Leaves[i].Center.X,QTree->Size.X);
+		double lzeroY = FMeshData::LocalizePos(QTree->Leaves[i].Center.Y,QTree->Size.Y);
+		double lposX = (posX == posCorner.X ? QTree->Size.X : FMeshData::LocalizePos(QTree->Leaves[i].Center.X + QTree->Leaves[i].Size.X * 0.5f,QTree->Size.X));
+		double lnegX = (negX == QTree->Position.X ? 0 : FMeshData::LocalizePos(QTree->Leaves[i].Center.X - QTree->Leaves[i].Size.X * 0.5f,QTree->Size.X));
+		double lposY = (posY == posCorner.Y ? QTree->Size.Y : FMeshData::LocalizePos(QTree->Leaves[i].Center.Y + QTree->Leaves[i].Size.Y * 0.5f,QTree->Size.Y));
+		double lnegY = (negY == QTree->Position.Y ? 0 : FMeshData::LocalizePos(QTree->Leaves[i].Center.Y - QTree->Leaves[i].Size.Y * 0.5f,QTree->Size.Y));
+
+		MeshData.AddVertex(FVector(lzeroX,lzeroY,0));
+		int zeroIndex = MeshData.Vertices.Num() - 1;
+		
+		MeshData.AddVertex(FVector(lnegX,lposY,0));
+		MeshData.AddVertex(FVector(lposX,lposY,0));
+		MeshData.AddVertex(FVector(lposX,lnegY,0));
+		MeshData.AddVertex(FVector(lnegX,lnegY,0));
+		int index = zeroIndex + 4;
+
+		if(QTree->Leaves[i].Neighbors[2] || fmod(posY, QTree->Size.Y) == 0) //North
+		{
+			MeshData.AddVertex(FVector(lzeroX,lposY,0));
+			index++;
+			MeshData.AddTriangle(zeroIndex+1,index,zeroIndex);
+			MeshData.AddTriangle(index,zeroIndex+2,zeroIndex);			
+		}else {
+			MeshData.AddTriangle(zeroIndex+1,zeroIndex+2,zeroIndex);
+		}
+		if(QTree->Leaves[i].Neighbors[0] || fmod(posX, QTree->Size.X) == 0) // East
+		{
+			MeshData.AddVertex(FVector(lposX,lzeroY,0));
+			index++;
+			MeshData.AddTriangle(zeroIndex+2,index,zeroIndex);
+			MeshData.AddTriangle(index,zeroIndex+3,zeroIndex);			
+		}else {
+			MeshData.AddTriangle(zeroIndex+2,zeroIndex+3,zeroIndex);
+		}
+		if(QTree->Leaves[i].Neighbors[3] || fmod(negY, QTree->Size.Y) == 0) // South 
+		{
+			MeshData.AddVertex(FVector(lzeroX,lnegY,0));
+			index++;
+			MeshData.AddTriangle(zeroIndex+3,index,zeroIndex);
+			MeshData.AddTriangle(index,zeroIndex+4,zeroIndex);			
+		}else {
+			MeshData.AddTriangle(zeroIndex+3,zeroIndex+4,zeroIndex);
+		}
+		if(QTree->Leaves[i].Neighbors[1] || fmod(negX, QTree->Size.X) == 0) // West 
+		{
+			MeshData.AddVertex(FVector(lnegX,lzeroY,0));
+			index++;
+			MeshData.AddTriangle(zeroIndex+4,index,zeroIndex);
+			MeshData.AddTriangle(index,zeroIndex+1,zeroIndex);			
+		}else {
+			MeshData.AddTriangle(zeroIndex+4,zeroIndex+1,zeroIndex);
+		}
+	}
+
+	MeshData.CalculateTangents();
+
+	double end = FPlatformTime::Seconds();
+	UE_LOG(MeshGenerator, Log, TEXT("MeshGenerator::QuadTreeMesh() ==> Verts: %d, Tris: %d  Runtime: %f"), MeshData.Vertices.Num(), MeshData.Triangles.Num(), end - start);
+	return MeshData;
+}
 
 FMeshData UMeshDataGenerator::QuadTreeMesh(UQuadTree* QTree, float UVScale, int depthFilter, FNoiseSettings* NoiseSettings, int heightMultiplier)
 {
@@ -331,14 +414,39 @@ FMeshData UMeshDataGenerator::QuadTreeMesh(UTexture2D* Texture, UQuadTree* QTree
 	FMeshData MeshData = FMeshData();
 	MeshData.UVScale = UVScale;
 	double start = FPlatformTime::Seconds();
-
+	bool border = true;
+	
 	//Alignment Error
 	if (QTree->Settings.MinSize / StepSize < 2) {
 		UE_LOG(MeshGenerator,Error,TEXT("MeshGenerator::OuadTreeMesh ==> The QuadTree.Settings.MinSize[%d] must be at minimum twice the FNoiseMap2D.StepSize[%d] to guarantee sample availability."),QTree->Settings.MinSize,StepSize);
 		return MeshData;	
 	}
+	//Texture Size error
+	// if(!border && (Texture->GetSizeX() != QTree->Size.X/StepSize || Texture->GetSizeY() != QTree->Size.Y/StepSize)){
+	// 	UE_LOG(MeshGenerator,Error,TEXT("MeshGenerator::OuadTreeMesh ==> The provided Texture %s is not of the expected size %s."),*FIntVector2(Texture->GetSizeX(),Texture->GetSizeY()).ToString(),*FIntVector2((QTree->Size.X/StepSize),(QTree->Size.Y/StepSize)).ToString());
+	// }
+	// if(border && (Texture->GetSizeX() != (QTree->Size.X/StepSize)+2 || Texture->GetSizeY() != (QTree->Size.Y/StepSize)+2)){
+	// 	
+	// 	UE_LOG(MeshGenerator,Error,TEXT("MeshGenerator::OuadTreeMesh ==> The provided Texture %s is not of the expected size %s."),*FIntVector2(Texture->GetSizeX(),Texture->GetSizeY()).ToString(),*FIntVector2((QTree->Size.X/StepSize)+2,(QTree->Size.Y/StepSize)+2).ToString());
+	// }
 
+	//Borders
 	FVector posCorner = QTree->Position + QTree->Size;
+	
+	// for (int i = -StepSize; i < QTree->Size.X+StepSize; i+=StepSize){ //for each x add border y min and max verts
+	// 	FVector negY = QTree->Position + FVector(i,-StepSize,0);
+	// 	FVector posY = QTree->Position + FVector(i,QTree->Size.Y+StepSize,0);
+	// 	MeshData.AddBorderVertex( QTree->Position + FVector(i,-StepSize,SampleTexture(Texture,FIntVector2(negY.X,negY.Y)/StepSize) * heightMultiplier));
+	// 	MeshData.AddBorderVertex( QTree->Position + FVector(i,QTree->Size.Y+StepSize,SampleTexture(Texture,FIntVector2(posY.X,posY.Y)/StepSize) * heightMultiplier));
+	// }
+	// for (int j = 0; j < QTree->Size.Y; j+=StepSize)	{ //for each y add x min and max verts{
+	// 	FVector negX = QTree->Position + FVector(-StepSize,j,0); 
+	// 	FVector posX = QTree->Position + FVector(QTree->Size.Y+StepSize,j,0);
+	// 	MeshData.AddBorderVertex( QTree->Position + FVector(-StepSize,j,SampleTexture(Texture,FIntVector2(negX.X,negX.Y)/StepSize) * heightMultiplier));
+	// 	MeshData.AddBorderVertex( QTree->Position + FVector(QTree->Size.X+StepSize,j,SampleTexture(Texture,FIntVector2(posX.X,posX.Y)/StepSize) * heightMultiplier));	
+	// }
+
+	//QTree Bounds
 	for (int i = 0; i < QTree->Leaves.Num(); i++) {
 		if(depthFilter != 0 && QTree->Leaves[i].Depth < depthFilter){ continue; }
 
@@ -348,31 +456,31 @@ FMeshData UMeshDataGenerator::QuadTreeMesh(UTexture2D* Texture, UQuadTree* QTree
 		double posY = QTree->Leaves[i].Center.Y + QTree->Leaves[i].Size.Y * 0.5f;
 		double negY = QTree->Leaves[i].Center.Y - QTree->Leaves[i].Size.Y * 0.5f;
 
-		double lzeroX = FMeshData::LocalizePos(QTree->Leaves[i].Center.X,QTree->Size.X);
-		double lzeroY = FMeshData::LocalizePos(QTree->Leaves[i].Center.Y,QTree->Size.Y);
-		double lposX = (posX == posCorner.X ? QTree->Size.X : FMeshData::LocalizePos(QTree->Leaves[i].Center.X + QTree->Leaves[i].Size.X * 0.5f,QTree->Size.X));
-		double lnegX = (negX == QTree->Position.X ? 0 : FMeshData::LocalizePos(QTree->Leaves[i].Center.X - QTree->Leaves[i].Size.X * 0.5f,QTree->Size.X));
-		double lposY = (posY == posCorner.Y ? QTree->Size.Y : FMeshData::LocalizePos(QTree->Leaves[i].Center.Y + QTree->Leaves[i].Size.Y * 0.5f,QTree->Size.Y));
-		double lnegY = (negY == QTree->Position.Y ? 0 : FMeshData::LocalizePos(QTree->Leaves[i].Center.Y - QTree->Leaves[i].Size.Y * 0.5f,QTree->Size.Y));
+		double lzeroX = FMeshData::LocalizePos(QTree->Leaves[i].Center.X,QTree->Size.X) + (border ? 1 : 0);
+		double lzeroY = FMeshData::LocalizePos(QTree->Leaves[i].Center.Y,QTree->Size.Y) + (border ? 1 : 0);
+		double lposX = (posX == posCorner.X ? QTree->Size.X : FMeshData::LocalizePos(QTree->Leaves[i].Center.X + QTree->Leaves[i].Size.X * 0.5f,QTree->Size.X)) + (border ? 1 : 0);
+		double lnegX = (negX == QTree->Position.X ? 0 : FMeshData::LocalizePos(QTree->Leaves[i].Center.X - QTree->Leaves[i].Size.X * 0.5f,QTree->Size.X)) + (border ? 1 : 0);
+		double lposY = (posY == posCorner.Y ? QTree->Size.Y : FMeshData::LocalizePos(QTree->Leaves[i].Center.Y + QTree->Leaves[i].Size.Y * 0.5f,QTree->Size.Y)) + (border ? 1 : 0);
+		double lnegY = (negY == QTree->Position.Y ? 0 : FMeshData::LocalizePos(QTree->Leaves[i].Center.Y - QTree->Leaves[i].Size.Y * 0.5f,QTree->Size.Y)) + (border ? 1 : 0);
 
-		double z = SampleTexture(Texture,FIntVector2(lzeroX,lzeroY)/StepSize) * heightMultiplier;
+		double z = UTextureUtils::SampleTextureR16f(Texture,FIntVector2(lzeroX,lzeroY)/StepSize) * heightMultiplier;
 		// UE_LOG(LogTemp,Warning,TEXT("QT MESH : pos:%s - val:%f"),*(FIntVector2(lzeroX,lzeroY)/StepSize).ToString(),z);
 		MeshData.AddVertex(FVector(lzeroX,lzeroY,z));
 		int zeroIndex = MeshData.Vertices.Num() - 1;
 		
-		double z1 = SampleTexture(Texture,FIntVector2(lnegX,lposY)/StepSize) * heightMultiplier;
+		double z1 = UTextureUtils::SampleTextureR16f(Texture,FIntVector2(lnegX,lposY)/StepSize) * heightMultiplier;
 		MeshData.AddVertex(FVector(lnegX,lposY,z1));
-		double z3 = SampleTexture(Texture,FIntVector2(lposX,lposY)/StepSize) * heightMultiplier;
+		double z3 = UTextureUtils::SampleTextureR16f(Texture,FIntVector2(lposX,lposY)/StepSize) * heightMultiplier;
 		MeshData.AddVertex(FVector(lposX,lposY,z3));
-		double z5 = SampleTexture(Texture,FIntVector2(lposX,lnegY)/StepSize) * heightMultiplier;
+		double z5 = UTextureUtils::SampleTextureR16f(Texture,FIntVector2(lposX,lnegY)/StepSize) * heightMultiplier;
 		MeshData.AddVertex(FVector(lposX,lnegY,z5));
-		double z7 = SampleTexture(Texture,FIntVector2(lnegX,lnegY)/StepSize) * heightMultiplier;
+		double z7 = UTextureUtils::SampleTextureR16f(Texture,FIntVector2(lnegX,lnegY)/StepSize) * heightMultiplier;
 		MeshData.AddVertex(FVector(lnegX,lnegY,z7));
 		int index = zeroIndex + 4;
 
 		if(QTree->Leaves[i].Neighbors[2] || fmod(posY, QTree->Size.Y) == 0) //North
 		{
-			double z2 = SampleTexture(Texture,FIntVector2(lzeroX,lposY)/StepSize) * heightMultiplier;
+			double z2 = UTextureUtils::SampleTextureR16f(Texture,FIntVector2(lzeroX,lposY)/StepSize) * heightMultiplier;
 			MeshData.AddVertex(FVector(lzeroX,lposY,z2));
 			index++;
 			MeshData.AddTriangle(zeroIndex+1,index,zeroIndex);
@@ -382,7 +490,7 @@ FMeshData UMeshDataGenerator::QuadTreeMesh(UTexture2D* Texture, UQuadTree* QTree
 		}
 		if(QTree->Leaves[i].Neighbors[0] || fmod(posX, QTree->Size.X) == 0) // East
 		{
-			double z4 = SampleTexture(Texture,FIntVector2(lposX,lzeroY)/StepSize) * heightMultiplier;
+			double z4 = UTextureUtils::SampleTextureR16f(Texture,FIntVector2(lposX,lzeroY)/StepSize) * heightMultiplier;
 			MeshData.AddVertex(FVector(lposX,lzeroY,z4));
 			index++;
 			MeshData.AddTriangle(zeroIndex+2,index,zeroIndex);
@@ -392,7 +500,7 @@ FMeshData UMeshDataGenerator::QuadTreeMesh(UTexture2D* Texture, UQuadTree* QTree
 		}
 		if(QTree->Leaves[i].Neighbors[3] || fmod(negY, QTree->Size.Y) == 0) // South 
 		{
-			double z6 = SampleTexture(Texture,FIntVector2(lzeroX,lnegY)/StepSize) * heightMultiplier;
+			double z6 = UTextureUtils::SampleTextureR16f(Texture,FIntVector2(lzeroX,lnegY)/StepSize) * heightMultiplier;
 			MeshData.AddVertex(FVector(lzeroX,lnegY,z6));
 			index++;
 			MeshData.AddTriangle(zeroIndex+3,index,zeroIndex);
@@ -402,7 +510,7 @@ FMeshData UMeshDataGenerator::QuadTreeMesh(UTexture2D* Texture, UQuadTree* QTree
 		}
 		if(QTree->Leaves[i].Neighbors[1] || fmod(negX, QTree->Size.X) == 0) // West 
 		{
-			double z8 = SampleTexture(Texture,FIntVector2(lnegX,lzeroY)/StepSize) * heightMultiplier;
+			double z8 = UTextureUtils::SampleTextureR16f(Texture,FIntVector2(lnegX,lzeroY)/StepSize) * heightMultiplier;
 			MeshData.AddVertex(FVector(lnegX,lzeroY,z8));
 			index++;
 			MeshData.AddTriangle(zeroIndex+4,index,zeroIndex);
@@ -411,11 +519,31 @@ FMeshData UMeshDataGenerator::QuadTreeMesh(UTexture2D* Texture, UQuadTree* QTree
 			MeshData.AddTriangle(zeroIndex+4,zeroIndex+1,zeroIndex);
 		}
 	}
+	
+	if (border){
+		// for (int i = 0; i < MeshData.Vertices.Num(); i++){
+		// 	if (MeshData.Vertices[i].X == (QTree->Position.X+QTree->Size.X)/StepSize) { //PosX
+		// 		MeshData.BorderVertices.Add(FVector(MeshData.Vertices[i].X+1,MeshData.Vertices[i].Y,UTextureUtils::SampleTextureR16f(Texture,FIntVector2(MeshData.Vertices[i].X+1,MeshData.Vertices[i].Y)) * heightMultiplier));
+		// 	}
+		// 	if (MeshData.Vertices[i].Y == (QTree->Position.Y+QTree->Size.Y)/StepSize) { //PosY
+		// 		MeshData.BorderVertices.Add(FVector(MeshData.Vertices[i].X,MeshData.Vertices[i].Y+1,UTextureUtils::SampleTextureR16f(Texture,FIntVector2(MeshData.Vertices[i].X,MeshData.Vertices[i].Y+1)) * heightMultiplier));
+		// 	}
+		//
+		// 	if (MeshData.Vertices[i].X == 1) { //NegX
+		// 		MeshData.BorderVertices.Add(FVector(MeshData.Vertices[i].X-1,MeshData.Vertices[i].Y,UTextureUtils::SampleTextureR16f(Texture,FIntVector2(MeshData.Vertices[i].X-1,MeshData.Vertices[i].Y)) * heightMultiplier));
+		// 	}
+		// 	if (MeshData.Vertices[i].Y == 1) { //NegY
+		// 		MeshData.BorderVertices.Add(FVector(MeshData.Vertices[i].X,MeshData.Vertices[i].Y-1,UTextureUtils::SampleTextureR16f(Texture,FIntVector2(MeshData.Vertices[i].X,MeshData.Vertices[i].Y-1)) * heightMultiplier));
+		// 	}
+		// }
 
-	MeshData.CalculateTangents();
+		MeshData.GenerateSmoothedNormalsWithBorders(MeshData.Normals,MeshData.Tangents);
+	}else{
+		MeshData.CalculateTangents();
+	}
 
 	double end = FPlatformTime::Seconds();
-	UE_LOG(MeshGenerator, Log, TEXT("MeshGenerator::QuadTreeMesh() ==> Verts: %d, Tris: %d  Runtime: %f"), MeshData.Vertices.Num(), MeshData.Triangles.Num(), end - start);
+	UE_LOG(MeshGenerator, Log, TEXT("MeshGenerator::QuadTreeMesh() ==> Verts: %d, Tris: %d, BorderVerts: %i  Runtime: %f"), MeshData.Vertices.Num(), MeshData.Triangles.Num(),MeshData.BorderVertices.Num(), end - start);
 	return MeshData;
 }
 
@@ -691,43 +819,43 @@ FVector UMeshDataGenerator::Default(FVector edgeVertex1, FVector edgeVertex2) {
  **/
 
 //R16F Format
-float UMeshDataGenerator::SampleTexture(UTexture2D* Texture, FIntVector2 Coordinates)
-{
-	if (!Texture) return 0.0f;
-
-	// Access the texture's source data
-	FTextureSource& Source = Texture->Source;
-
-	// Ensure the source format is compatible (R16f)
-	if (Source.GetFormat() != TSF_R16F) return 0.0f;
-
-	// Ensure the coordinates are within bounds
-	int32 Width = Source.GetSizeX();
-	int32 Height = Source.GetSizeY();
-
-	if (Coordinates.X < 0 || Coordinates.X >= Width || Coordinates.Y < 0 || Coordinates.Y >= Height) {
-		return 0.0f;
-	}
-
-	// Lock the source data for reading
-	const void* Data = Source.LockMipReadOnly(0);
-	if (!Data) return 0.0f;
-
-	// Calculate the pixel index
-	int32 PixelIndex = Coordinates.Y * Width + Coordinates.X;
-
-	// Access the 16-bit float value and convert it to a 32-bit float
-	const uint16* RawData = static_cast<const uint16*>(Data);
-	uint16 RawValue = RawData[PixelIndex];
-
-	FFloat16 HalfValue;
-	HalfValue.Encoded = RawValue;
-	float PixelValue = HalfValue.GetFloat(); 
-	// UE_LOG(LogTemp, Log, TEXT("16-bit: %u, Float:%f"), RawValue,PixelValue);
-	// FMath::StoreHalf(&RawValue,PixelValue);
-
-	// Unlock the source data
-	Source.UnlockMip(0);
-
-	return PixelValue;
-}
+// float UMeshDataGenerator::SampleTexture(UTexture2D* Texture, FIntVector2 Coordinates)
+// {
+// 	if (!Texture) return 0.0f;
+//
+// 	// Access the texture's source data
+// 	FTextureSource& Source = Texture->Source;
+//
+// 	// Ensure the source format is compatible (R16f)
+// 	if (Source.GetFormat() != TSF_R16F) return 0.0f;
+//
+// 	// Ensure the coordinates are within bounds
+// 	int32 Width = Source.GetSizeX();
+// 	int32 Height = Source.GetSizeY();
+//
+// 	if (Coordinates.X < 0 || Coordinates.X >= Width || Coordinates.Y < 0 || Coordinates.Y >= Height) {
+// 		return 0.0f;
+// 	}
+//
+// 	// Lock the source data for reading
+// 	const void* Data = Source.LockMipReadOnly(0);
+// 	if (!Data) return 0.0f;
+//
+// 	// Calculate the pixel index
+// 	int32 PixelIndex = Coordinates.Y * Width + Coordinates.X;
+//
+// 	// Access the 16-bit float value and convert it to a 32-bit float
+// 	const uint16* RawData = static_cast<const uint16*>(Data);
+// 	uint16 RawValue = RawData[PixelIndex];
+//
+// 	FFloat16 HalfValue;
+// 	HalfValue.Encoded = RawValue;
+// 	float PixelValue = HalfValue.GetFloat(); 
+// 	// UE_LOG(LogTemp, Log, TEXT("16-bit: %u, Float:%f"), RawValue,PixelValue);
+// 	// FMath::StoreHalf(&RawValue,PixelValue);
+//
+// 	// Unlock the source data
+// 	Source.UnlockMip(0);
+//
+// 	return PixelValue;
+// }

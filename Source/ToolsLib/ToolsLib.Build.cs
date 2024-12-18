@@ -19,7 +19,8 @@ public class ToolsLib : ModuleRules
                 "CoreUObject",
                 "Engine",
                 "Slate",
-                "SlateCore","UMG"
+                "SlateCore",
+                "UMG"
             }
         );
     }
