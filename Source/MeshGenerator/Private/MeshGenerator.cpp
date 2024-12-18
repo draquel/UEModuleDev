@@ -5,6 +5,8 @@ DEFINE_LOG_CATEGORY(MeshGenerator);
 
 void FMeshGeneratorModule::StartupModule()
 {
+    FString PluginShaderDir = FPaths::Combine(IFileManager::Get().ConvertToAbsolutePathForExternalAppForRead(*FPaths::GameSourceDir()),TEXT("MeshGenerator/Shaders/Private")); 
+    AddShaderSourceDirectoryMapping(TEXT("/MeshShaders"), PluginShaderDir); 
     UE_LOG(LogTemp, Warning, TEXT("MeshGenerator module has started."))
 }
 

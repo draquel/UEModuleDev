@@ -6,10 +6,18 @@ public class MeshGenerator : ModuleRules
     {
         PCHUsage = ModuleRules.PCHUsageMode.UseExplicitOrSharedPCHs;
 
+        // PrivateIncludePaths.AddRange(new string[] 
+        // {
+        //     "Runtime/Renderer/Private",
+        //     "ComputeShaders/Private"
+        // });
+        
         PublicDependencyModuleNames.AddRange(
             new string[]
             {
-                "Core", "UnrealEd", "NoiseGenerator", "ToolsLib", "ProceduralMeshComponent", "GeometryCore", "GeometryFramework", "DynamicMesh"
+                "Core",
+                "NoiseGenerator", "ToolsLib", "ProceduralMeshComponent", "GeometryCore", "GeometryFramework", "DynamicMesh",
+                "MaterialShaderQualitySettings"
             }
         );
 
@@ -18,9 +26,29 @@ public class MeshGenerator : ModuleRules
             {
                 "CoreUObject",
                 "Engine",
-                "Slate",
-                "SlateCore"
+                "Renderer",
+                "RenderCore",
+                "RHI",
+                "Projects"
             }
         );
+        
+        if (Target.bBuildEditor == true) {
+            PrivateDependencyModuleNames.AddRange(new string[] {
+                    "UnrealEd",
+                    "MaterialUtilities",
+                    "SlateCore",
+                    "Slate",
+                    "TargetPlatform"
+                }
+            );
+        }
+        
+        CircularlyReferencedDependentModules.AddRange(
+            new string[] {
+                "UnrealEd",
+                "MaterialUtilities",
+            }
+        ); 
     }
 }
