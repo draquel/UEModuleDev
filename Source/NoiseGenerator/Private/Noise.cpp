@@ -3,6 +3,7 @@
 #include "NoiseSettings.h"
 #include "Poisson.h"
 #include "Curves/CurveLinearColor.h"
+#include "Engine/VolumeTexture.h"
 #include "NoiseGenerator/Public/NoiseComputeShader/NoiseComputeShader.h"
 #include "NoiseGenerator/Public/NoiseTextureComputeShader/NoiseTextureComputeShader.h"
 
@@ -216,7 +217,7 @@ void UNoise::GenerateMap2D(FNoiseMap2d& NoiseMap, TArray<FNoiseLayer2DData>* lay
 	}	
 }
 
-void UNoise::GenerateMap2D(FIntVector pos, FIntVector2 mapSize, int stepSize, FNoiseSettings NoiseSettings, TFunction<void(FNoiseMap2d NoiseMap)> Callback)
+void UNoise::GenerateMap2D(FIntVector pos, FIntVector2 mapSize, int stepSize, FNoiseSettings NoiseSettings, TFunction<void(FNoiseMap2d* NoiseMap)> Callback)
 {
 	int32 cycles = mapSize.X * mapSize.Y/stepSize * NoiseSettings.octaves;
 	double start = FPlatformTime::Seconds();
@@ -225,7 +226,7 @@ void UNoise::GenerateMap2D(FIntVector pos, FIntVector2 mapSize, int stepSize, FN
 		FNoiseMap2d NoiseMap = GenerateMap2D(pos,mapSize,stepSize, &NoiseSettings);
 		double end = FPlatformTime::Seconds();
 		UE_LOG(NoiseGenerator,Log,TEXT("UNoise::GenerateMap2D ==> %s-%s, Cycles: %u, RunTime: %fs"),*UEnum::GetValueAsString(NoiseSettings.source),*UEnum::GetValueAsString(NoiseSettings.type),cycles,end-start);
-		Callback(NoiseMap);
+		Callback(&NoiseMap);
 		return;
 	}
 
@@ -240,11 +241,11 @@ void UNoise::GenerateMap2D(FIntVector pos, FIntVector2 mapSize, int stepSize, FN
 		}
 		double end = FPlatformTime::Seconds();
 		UE_LOG(NoiseGenerator,Log,TEXT("UNoise::GenerateMap2D ==> %s-%s, Cycles: %u, RunTime: %fs"),*UEnum::GetValueAsString(NoiseSettings.source),*UEnum::GetValueAsString(NoiseSettings.type),cycles,end-start);
-		Callback(NoiseMap);
+		Callback(&NoiseMap);
 	});
 }
 
-void UNoise::GenerateMap2D(FIntVector pos, FIntVector2 mapSize, int stepSize, TArray<FNoiseSettings> NoiseSettings, TFunction<void(FNoiseMap2d NoiseMap)> Callback)
+void UNoise::GenerateMap2D(FIntVector pos, FIntVector2 mapSize, int stepSize, TArray<FNoiseSettings> NoiseSettings, TFunction<void(FNoiseMap2d* NoiseMap)> Callback)
 {
 	//Count of NoiseSettings with a positive gain in the array
 	int32 count = Algo::Accumulate(NoiseSettings, 0, [](int32 Total, const FNoiseSettings& Item) { return Total + (Item.gain > 0 ? 1 : 0); });
@@ -290,7 +291,7 @@ void UNoise::GenerateMap2D(FIntVector pos, FIntVector2 mapSize, int stepSize, TA
 		GenerateMap2D(NoiseMap,&ResultData);
 		double end = FPlatformTime::Seconds();
 		UE_LOG(NoiseGenerator,Log,TEXT("UNoise::GenerateMap2D ==> %s [%d], Cycles: %u, RunTime: %f"),TEXT("Layered - CPU"),ResultData.Num(),cycles,end-start);
-		Callback(NoiseMap);
+		Callback(&NoiseMap);
 		return;
 	}
 	
@@ -318,7 +319,87 @@ void UNoise::GenerateMap2D(FIntVector pos, FIntVector2 mapSize, int stepSize, TA
 		GenerateMap2D(NoiseMap,&ResultData);
 		double end = FPlatformTime::Seconds();
 		UE_LOG(NoiseGenerator,Log,TEXT("UNoise::GenerateMap2D ==> %s [%d], Cycles: %u, RunTime: %f"),CPUMaps.Num()>0?TEXT("Layered CPU/GPU"):TEXT("Layered GPU"),ResultData.Num(),cycles,end-start);
-		Callback(NoiseMap);
+		Callback(&NoiseMap);
+	});
+}
+UTexture2D* UNoise::GenerateDataTexture(FNoiseMap2d* NoiseMap, FName name)
+{
+	UTexture2D* Texture = UTexture2D::CreateTransient(NoiseMap->Size.X/NoiseMap->StepSize,NoiseMap->Size.Y/NoiseMap->StepSize,PF_R16F,name);
+	// Texture->CompressionSettings = TC_Default;
+	Texture->SRGB = false;
+	Texture->MipGenSettings = TMGS_NoMipmaps;
+	Texture->Filter = TF_Bilinear;
+	Texture->AddToRoot(); // Prevent garbage collection if needed
+	// Texture->UpdateResource();
+		
+	TArray<uint16> PixelData;
+	PixelData.SetNum(NoiseMap->Size.X/NoiseMap->StepSize*NoiseMap->Size.Y/NoiseMap->StepSize);
+
+	for(int x = 0; x < NoiseMap->Size.X; x+=NoiseMap->StepSize) {
+		for(int y = 0; y < NoiseMap->Size.Y; y+=NoiseMap->StepSize) {
+			FIntVector2 index = FIntVector2(NoiseMap->Position.X + x, NoiseMap->Position.Y + y);
+			int32 PixelIndex = y/NoiseMap->StepSize * NoiseMap->Size.X/NoiseMap->StepSize + x/NoiseMap->StepSize;
+				
+			// Default value if no data in map
+			float Value = 0.0f;
+
+			if (NoiseMap->Map.Contains(index)){
+				Value = NoiseMap->Map[index];
+			}else {
+				UE_LOG(LogTemp, Error, TEXT("NoiseMap.Map[%s] does not exist"),*index.ToString());
+			}
+
+			// Convert float to 16-bit half-float for PF_R16F
+			PixelData[PixelIndex] = FFloat16(Value).Encoded;
+		}
+	}
+		
+	void* TextureData = Texture->GetPlatformData()->Mips[0].BulkData.Lock(LOCK_READ_WRITE);
+	FMemory::Memcpy(TextureData, PixelData.GetData(), PixelData.Num() * sizeof(uint16));
+	Texture->GetPlatformData()->Mips[0].BulkData.Unlock();
+	Texture->UpdateResource();
+
+	return Texture;
+}
+
+void UNoise::GenerateTexture(UTexture2D* Texture, FIntVector pos, FIntVector2 mapSize, int StepSize, TArray<FNoiseSettings> NoiseSettings, TFunction<void(UTexture2D* Texture2D)>Callback)
+{
+	GenerateMap2D(pos,mapSize,StepSize,NoiseSettings,[Texture,mapSize,StepSize,Callback](FNoiseMap2d* NoiseMap) {
+		// Texture->CompressionSettings = TC_Default;
+		Texture->SRGB = false;
+		Texture->MipGenSettings = TMGS_NoMipmaps;
+		Texture->Filter = TF_Bilinear;
+		// Texture->AddToRoot(); // Prevent garbage collection if needed
+		// Texture->UpdateResource();
+		
+		TArray<uint16> PixelData;
+		PixelData.SetNum(mapSize.X/StepSize*mapSize.Y/StepSize);
+
+		for(int x = 0; x < NoiseMap->Size.X; x+=NoiseMap->StepSize) {
+			for(int y = 0; y < NoiseMap->Size.Y; y+=NoiseMap->StepSize) {
+				FIntVector2 index = FIntVector2(NoiseMap->Position.X + x, NoiseMap->Position.Y + y);
+				int32 PixelIndex = y/StepSize * mapSize.X/StepSize + x/StepSize;
+				
+				// Default value if no data in map
+				float Value = 0.0f;
+
+				if (NoiseMap->Map.Contains(index)){
+					Value = NoiseMap->Map[index];
+				}else {
+					UE_LOG(LogTemp, Error, TEXT("NoiseMap.Map[%s] does not exist"),*index.ToString());
+				}
+
+				// Convert float to 16-bit half-float for PF_R16F
+				PixelData[PixelIndex] = FFloat16(Value).Encoded;
+			}
+		}
+		
+		void* TextureData = Texture->GetPlatformData()->Mips[0].BulkData.Lock(LOCK_READ_WRITE);
+		FMemory::Memcpy(TextureData, PixelData.GetData(), PixelData.Num() * sizeof(uint16));
+		Texture->GetPlatformData()->Mips[0].BulkData.Unlock();
+	    Texture->UpdateResource();
+		
+		Callback(Texture);
 	});
 }
 
@@ -497,6 +578,22 @@ void UNoise::GenerateMap3D(FIntVector pos, FIntVector mapSize, int stepSize, TAr
 			CPUMaps.Add(i,GenerateMap3D(pos,mapSize,stepSize,&NoiseSettings[i],DensityFunction));
 		}
 	}
+
+	if (GPUSettings.Num() == 0)
+	{
+		FNoiseMap3d NoiseMap = FNoiseMap3d(pos,mapSize,stepSize);
+		TArray<FNoiseLayer3DData> ResultData;
+		for (int i = 0; i < NoiseSettings.Num(); i++) {
+			if (NoiseSettings[i].source == CPU && CPUMaps.Contains(i)) {
+				ResultData.Add(FNoiseLayer3DData(CPUMaps[i],NoiseSettings[i].gain,NoiseSettings[i].curve));	
+			}
+		}
+		GenerateMap3D(NoiseMap,&ResultData);
+		double end = FPlatformTime::Seconds();
+		UE_LOG(NoiseGenerator,Log,TEXT("UNoise::GenerateMap3D ==> %s [%d], Cycles: %u, RunTime: %f"),TEXT("Layered - CPU"),ResultData.Num(),cycles,end-start);
+		Callback(NoiseMap);
+		return;	
+	}
 	
 	FNoiseComputeShaderDispatchParams Params = FNoiseComputeShaderInterface::BuildParams((FVector3f)pos, FVector3f(mapSize.X,mapSize.Y,mapSize.Z)/stepSize,stepSize,GPUSettings,D3,DensityFunction);
 	FNoiseComputeShaderInterface::Dispatch(Params,[pos,mapSize,stepSize,CPUMaps,NoiseSettings,Callback,cycles,start](TArray<float> OutputVals)	{
@@ -521,9 +618,38 @@ void UNoise::GenerateMap3D(FIntVector pos, FIntVector mapSize, int stepSize, TAr
 		
 		GenerateMap3D(NoiseMap,&ResultData);
 		double end = FPlatformTime::Seconds();
-		UE_LOG(NoiseGenerator,Log,TEXT("UNoise::GenerateMap3D ==> %s [%d], Cycles: %u, RunTime: %f"),TEXT("Layered"),ResultData.Num(),cycles,end-start);
+		UE_LOG(NoiseGenerator,Log,TEXT("UNoise::GenerateMap3D ==> %s [%d], Cycles: %u, RunTime: %f"),CPUMaps.Num()>0?TEXT("Layered CPU/GPU"):TEXT("Layered GPU"),ResultData.Num(),cycles,end-start);
 		Callback(NoiseMap);
 	});
+}
+
+UVolumeTexture* UNoise::GenerateTexture(FNoiseMap3d* NoiseMap, UCurveLinearColor* ColorCurve)
+{
+	UVolumeTexture* texture = UVolumeTexture::CreateTransient(NoiseMap->Size.X,NoiseMap->Size.Y,NoiseMap->Size.Z);
+	TArray<FColor> colors;
+
+	for(int x = 0; x < NoiseMap->Size.X; x++) {
+		for(int y = 0; y < NoiseMap->Size.Y; y++) {
+			for(int z = 0; z < NoiseMap->Size.Z; z++){
+				FIntVector3 index = FIntVector3(NoiseMap->Position.X + x, NoiseMap->Position.Y + y,NoiseMap->Position.Z + z);
+				if (!NoiseMap->Map.Contains(index)) { colors.Add(FColor(FColor::Black)); continue; }
+				if (ColorCurve == nullptr) {
+					uint8 color = static_cast<uint8>(NoiseMap->Map[index] * 255);
+					colors.Add(FColor(color,color,color,255));	
+				} else {
+					FLinearColor color = ColorCurve->GetLinearColorValue(NoiseMap->Map[index]);
+					colors.Add(color.ToFColor(true));
+				}
+			}
+		}
+	}
+	
+	void* TextureData = texture->GetPlatformData()->Mips[0].BulkData.Lock(LOCK_READ_WRITE);
+	FMemory::Memcpy(TextureData, colors.GetData(), colors.Num() * sizeof(FColor));
+	texture->GetPlatformData()->Mips[0].BulkData.Unlock();
+	texture->UpdateResource();
+	
+	return texture;	
 }
 
 //Poisson

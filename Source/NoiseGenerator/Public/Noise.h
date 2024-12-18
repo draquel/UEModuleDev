@@ -3,45 +3,10 @@
 #include "NoiseGenerator.h"
 #include "NoiseSettings.h"
 #include "Engine/TextureRenderTarget2D.h"
+#include "Structs/MinMax.h"
 #include "Noise.generated.h"
 
 class FastNoiseLite;
-
-USTRUCT()
-struct FMinMax
-{
-	GENERATED_BODY()
-	float min;
-	float max;
-	bool init = false;
-
-	void Add(float in)
-	{
-		if(!init){
-			min = in;
-			max = in;
-			init = true;
-		} else {
-			if (min > in){ min = in; }
-			if (max < in){ max = in; }
-		}
-	}
-
-	// Default constructor
-	FMinMax() = default;
-
-	// Copy constructor
-	FMinMax(const FMinMax& Other) = default;
-
-	// Move constructor
-	FMinMax(FMinMax&& Other) noexcept = default;
-
-	// Copy assignment
-	FMinMax& operator=(const FMinMax& Other) = default;
-
-	// Move assignment
-	FMinMax& operator=(FMinMax&& Other) noexcept = default;
-};
 
 USTRUCT()
 struct FNoiseMap2d
@@ -282,24 +247,27 @@ public:
 	static void GenerateMap2D(FNoiseMap2d& NoiseMap,TArray<FNoiseLayer2DData>* layerData);
 
 	//Needs unique Name -- Accessors for CPU & GPU Generation, with callback to handle Async uniformily.
-	static void GenerateMap2D(FIntVector pos, FIntVector2 mapSize, int stepSize, FNoiseSettings NoiseSettings, TFunction<void(FNoiseMap2d NoiseMap)> Callback);
-	static void GenerateMap2D(FIntVector pos, FIntVector2 mapSize, int stepSize, TArray<FNoiseSettings> NoiseSettings, TFunction<void(FNoiseMap2d NoiseMap)> Callback);
-	
+	static void GenerateMap2D(FIntVector pos, FIntVector2 mapSize, int stepSize, FNoiseSettings NoiseSettings, TFunction<void(FNoiseMap2d* NoiseMap)> Callback);
+	static void GenerateMap2D(FIntVector pos, FIntVector2 mapSize, int stepSize, TArray<FNoiseSettings> NoiseSettings, TFunction<void(FNoiseMap2d* NoiseMap)> Callback);
+	static UTexture2D* GenerateDataTexture(FNoiseMap2d* NoiseMap, FName name);
+
 	//2D TEXTURE Generators
 	static UTexture2D* GenerateTexture(FIntVector pos, FIntVector2 mapSize, FNoiseSettings* NoiseSettings, UCurveLinearColor* ColorCurve = nullptr);
 	static UTexture2D* GenerateTexture(FIntVector pos, FIntVector2 mapSize, TArray<FNoiseSettings>* NoiseSettings, UCurveLinearColor* ColorCurve = nullptr);
 	static UTexture2D* GenerateTexture(FNoiseMap2d* NoiseMap, UCurveLinearColor* ColorCurve = nullptr);
-	static void GenerateTexture(UTextureRenderTarget2D* RenderTarget, FIntVector pos, FIntVector2 Size, int stepSize, TArray<FNoiseSettings>*
-	                            NoiseSettings, TFunction<void()> Callback);
+	static void GenerateTexture(UTextureRenderTarget2D* RenderTarget, FIntVector pos, FIntVector2 Size, int stepSize, TArray<FNoiseSettings>* NoiseSettings, TFunction<void()> Callback);
+	static void GenerateTexture(UTexture2D* Texture, FIntVector pos, FIntVector2 mapSize, int StepSize, TArray<FNoiseSettings> NoiseSettings, TFunction<void(UTexture2D* Texture2D)> Callback);
 
 	//CPU 3D Maps
 	static FNoiseMap3d GenerateMap3D(FIntVector pos, FIntVector mapSize, int stepSize, FNoiseSettings* NoiseSettings, NoiseDensityFunction DensityFunction = NoDensityFunction);
 	static void GenerateMap3D(FNoiseMap3d& NoiseMap,TArray<FNoiseLayer3DData>* layerData);
-
+	
 	//Needs unique Name -- Accessors for CPU & GPU Generation, with callback to handle Async uniformily.
 	static void GenerateMap3D(FIntVector pos, FIntVector mapSize, int stepSize, FNoiseSettings NoiseSettings, NoiseDensityFunction DensityFunction, TFunction<void(FNoiseMap3d NoiseMap)> Callback);
 	static void GenerateMap3D(FIntVector pos, FIntVector mapSize, int stepSize, TArray<FNoiseSettings> NoiseSettings, NoiseDensityFunction DensityFunction, TFunction<void(FNoiseMap3d NoiseMap)> Callback);
-
+	
+	//3D TEXTURE Generators
+	static UVolumeTexture* GenerateTexture(FNoiseMap3d* NoiseMap, UCurveLinearColor* ColorCurve);
 	//Poisson
 	static FVector2D PoissonSample(const FVector2D& center, float minRadius, float maxRadius);
 	static TArray<FVector2D> PoissonDiscSample(const FVector2D& topLeft, const FVector2D& bottomRight, float minDist, int newPointsCount);
