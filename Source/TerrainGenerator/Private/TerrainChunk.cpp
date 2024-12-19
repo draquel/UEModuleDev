@@ -45,6 +45,12 @@ void ATerrainChunk::BeginPlay()
 	Super::BeginPlay();
 }
 
+void ATerrainChunk::Destroyed()
+{
+	Super::Destroyed();
+	DebugDraw(0.75f,FColor::Red);	
+}
+
 void ATerrainChunk::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
@@ -97,6 +103,7 @@ void ATerrainChunk::Disable()
 	SetActorEnableCollision(false);
 	WaterMesh->Deactivate();
 	TerrainMesh->Deactivate();
+	RootComponent->SetVisibility(false,true);
 	for (int i = 0; i < FoliageGroups.Num(); i++) {
 		for(UInstancedStaticMeshComponent* ism : FoliageGroups[i].FoliageInstances) {
 			ism->Deactivate();
@@ -112,6 +119,7 @@ void ATerrainChunk::Enable()
 	SetActorEnableCollision(true);
 	WaterMesh->Activate();
 	TerrainMesh->Activate();
+	RootComponent->SetVisibility(true,true);
 	for (int i = 0; i < FoliageGroups.Num(); i++) {
 		for(UInstancedStaticMeshComponent* ism : FoliageGroups[i].FoliageInstances) {
 			ism->Activate();
@@ -363,3 +371,4 @@ void ATerrainChunk::DebugDrawPositionMarker(float life, FColor color)
 	FVector pos = position + displace;
 	DrawDebugSolidBox(GetWorld(),pos,extends,color,false,life,0);
 }
+

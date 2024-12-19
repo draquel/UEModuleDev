@@ -1,5 +1,4 @@
 #include "InfiniteTerrain.h"
-#include "LevelEditorViewport.h"
 #include "NavigationSystem.h"
 #include "Builders/CubeBuilder.h"
 #include "Components/BrushComponent.h"
@@ -118,7 +117,7 @@ void AInfiniteTerrain::Generate()
 	FVector2D key;
 	while (AddKeys.Peek() != nullptr) {
 		AddKeys.Dequeue(key);
-		TerrainChunkMap.Add(key,CreateChunk(key))->Update(PlayerPositionLastUpdate,false);
+		TerrainChunkMap.Add(key,CreateChunk(key))->Update(GetWorld()->IsGameWorld() ? PlayerPositionLastUpdate : GetPlayerPos(),false);
 	}
 
 	NavMeshUpdate();	
@@ -135,7 +134,7 @@ void AInfiniteTerrain::UpdateChunks()
 	double start = FPlatformTime::Seconds();
 	isUpdatingChunks = true;
 
-	FVector2D currentChunk = ATerrainChunk::PosToCoord(PlayerPositionLastUpdate,TerrainChunkSettings.Size.X);
+	FVector2D currentChunk = ATerrainChunk::PosToCoord(GetWorld()->IsGameWorld() ? PlayerPositionLastUpdate : GetPlayerPos(),TerrainChunkSettings.Size.X);
 	int limit = ChunkRenderDistance * ChunkRenderDistance;
 
 	ClearQueues();	
@@ -168,7 +167,7 @@ void AInfiniteTerrain::UpdateChunks()
 	TArray<FVector2D> disabledKeys;
 	for (auto chunk : TerrainChunkMap) {
 		if(FVector2D::Distance(currentChunk,chunk.Key) <= ChunkRenderDistance+1) { continue; }
-		if(!chunk.Value->IsHidden())	{
+		if(chunk.Value->IsHidden())	{
 			disabledKeys.Add(chunk.Key);
 		} else {
 			DisableKeys.Enqueue(chunk.Key);
@@ -185,7 +184,9 @@ void AInfiniteTerrain::UpdateChunks()
 	isUpdatingChunks = false;
 	
 	if (!GetWorld()->IsGameWorld())	{
-		ProcessChunkQueues(false);
+		while (!AddKeys.IsEmpty() || !RemoveKeys.IsEmpty() || !UpdateKeys.IsEmpty() || !DisableKeys.IsEmpty()) {
+			ProcessChunkQueues(false);
+		}
 	}
 	
 	double end = FPlatformTime::Seconds();
@@ -248,7 +249,7 @@ void AInfiniteTerrain::ProcessChunkQueues(bool allowThreads = false)
 			UpdateKeys.Dequeue(key);
 			ATerrainChunk* chunk = *TerrainChunkMap.Find(key);
 			if(chunk->IsHidden()){ chunk->Enable(); }
-			else { chunk->Update(PlayerPositionLastUpdate, allowThreads); }
+			else { chunk->Update(GetWorld()->IsGameWorld() ? PlayerPositionLastUpdate : GetPlayerPos(), allowThreads); }
 			UE_LOG(TerrainGenerator,VeryVerbose,TEXT("InfiniteTerrain::ProcessChunkQueues() => Chunk %s Updated"),*key.ToString());
 		}
 		UE_LOG(TerrainGenerator,Log,TEXT("InfiniteTerrain::ProcessChunkQueues() Thread => Updating %i Chunks"),i);
@@ -287,7 +288,6 @@ void AInfiniteTerrain::ProcessChunkQueues(bool allowThreads = false)
 			FVector2D key;
 			RemoveKeys.Dequeue(key);
 			ATerrainChunk* c = *TerrainChunkMap.Find(key);
-			c->DebugDraw(0.5f,FColor::Red);
 			c->Destroy();
 			TerrainChunkMap.Remove(key);
 			UE_LOG(TerrainGenerator,VeryVerbose,TEXT("InfiniteTerrain::ProcessChunkQueues() => Chunk %s Destroyed"),*key.ToString())
@@ -301,10 +301,19 @@ FVector AInfiniteTerrain::GetPlayerPos() const
 	if(GetWorld()->IsGameWorld()) {
 		return GetWorld()->GetFirstPlayerController()->GetPawn()->GetActorLocation();
 	}
-	if(GCurrentLevelEditingViewportClient) {
-		FViewportCameraTransform ViewTransform = GCurrentLevelEditingViewportClient->GetViewTransform();
-		return ViewTransform.GetLocation();
+#if WITH_EDITOR
+	if (GEditor && GEditor->GetActiveViewport()) {
+		FViewport* Viewport = GEditor->GetActiveViewport();
+		FEditorViewportClient* ViewportClient = (FEditorViewportClient*)Viewport->GetClient();
+
+		if (ViewportClient) {
+			return ViewportClient->GetViewLocation();
+			// FRotator CameraRotation = ViewportClient->GetViewRotation();
+			// UE_LOG(LogTemp, Log, TEXT("Editor Camera Location: %s"), *CameraLocation.ToString());
+			// UE_LOG(LogTemp, Log, TEXT("Editor Camera Rotation: %s"), *CameraRotation.ToString());
+		}
 	}
+#endif
 	return FVector();
 }
 

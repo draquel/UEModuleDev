@@ -95,7 +95,7 @@ public:
 
 protected:
 	virtual void BeginPlay() override;
-	
+	virtual void Destroyed() override;	
 	virtual void OnConstruction(const FTransform& Transform) override;
 	
 	UQuadTree QTree;
