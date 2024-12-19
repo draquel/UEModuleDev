@@ -154,8 +154,8 @@ void ATerrainChunk::CreateQuadtreeMesh(FVector playerPos = FVector(), bool allow
 
 void ATerrainChunk::CreateRectMesh(bool allowThread)
 {
-	if(GetWorld()->IsGameWorld() && allowThread && false) {
-		// RectMeshDataThread = new FRectMeshDataThread(TerrainMesh,position,Settings.Size,FVector2D(Settings.MeshResolution,Settings.MeshResolution),Settings.WaterUVScale,0,true,&Settings.NoiseSettings,Settings.Size.Z);
+	if(GetWorld()->IsGameWorld() && allowThread) {
+		RectMeshDataThread = new FRectMeshDataThread(TerrainMesh,position,Settings.Size,FVector2D(Settings.MeshResolution,Settings.MeshResolution),Settings.WaterUVScale,0,true,NoiseTexture,Settings.MeshResolution,Settings.NoiseStepSize,Settings.Size.Z);
 	} else {
 		FMeshData MeshData = UMeshDataGenerator::RectMesh(NoiseTexture,position,Settings.Size,Settings.NoiseStepSize,400,Settings.UVScale,Settings.Size.Z);
 		MeshData.CreateProceduralMesh(TerrainMesh);

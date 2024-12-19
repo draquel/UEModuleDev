@@ -9,7 +9,7 @@ bool FRectMeshDataThread::Init() {
 
 uint32 FRectMeshDataThread::Run() {
 	if(withNoise) {
-		MeshData = UMeshDataGenerator::RectMesh(Position, Size, Segments, UVScale,NoiseSettings,HeightMultiplier);
+		MeshData = UMeshDataGenerator::RectMesh(NoiseTexture,Position, Size, StepSize,TextureStepSize, UVScale,HeightMultiplier);
 	} else {
 		MeshData = UMeshDataGenerator::RectMesh(Position, Size, Segments, UVScale,nullptr,0);
 	}

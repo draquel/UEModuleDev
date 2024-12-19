@@ -20,7 +20,7 @@ public:
 		Thread = FRunnableThread::Create(this, TEXT("MyThread"));
 	}
 
-	FRectMeshDataThread(UProceduralMeshComponent* component, FVector position, FVector size, FVector2D segments, float uvScale, int section, bool collision, FNoiseSettings* noiseSettings, int heightMultiplier)
+	FRectMeshDataThread(UProceduralMeshComponent* component, FVector position, FVector size, FVector2D segments, float uvScale, int section, bool collision, UTexture2D* noiseTexture, int stepSize, int textureStepSize, int heightMultiplier)
 	{
 		Component = component;
 		Position = position;
@@ -28,7 +28,9 @@ public:
 		Segments = segments;
 		UVScale = uvScale;
 
-		NoiseSettings = noiseSettings;
+		StepSize = stepSize;
+		TextureStepSize = textureStepSize;
+		NoiseTexture = noiseTexture;
 		HeightMultiplier = heightMultiplier;
 		Section = section;
 		Collision = collision;
@@ -49,11 +51,13 @@ public:
 	FMeshData MeshData;
 
 	UProceduralMeshComponent* Component;
+	UTexture2D* NoiseTexture;
 	FVector Position;
 	FVector Size;
 	FVector2D Segments;
+	int StepSize;
+	int TextureStepSize;
 	float UVScale;
-	FNoiseSettings* NoiseSettings;
 	int HeightMultiplier;
 	int Section = 0;
 	bool Collision = false;
