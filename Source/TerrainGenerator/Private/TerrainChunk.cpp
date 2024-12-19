@@ -1,6 +1,5 @@
 #include "TerrainChunk.h"
 
-#include "LevelEditorViewport.h"
 #include "Components/DecalComponent.h"
 #include "Components/InstancedStaticMeshComponent.h"
 #include "MeshData/MeshDataGenerator.h"
@@ -8,7 +7,6 @@
 #include "TerrainChunkSettings.h"
 #include "TerrainGenerator.h"
 #include "TextureUtils.h"
-#include "Thread/NoiseTextureThread.h"
 #include "Thread/PoissonGeneratorThread.h"
 
 ATerrainChunk::ATerrainChunk()
@@ -148,13 +146,9 @@ void ATerrainChunk::CreateQuadtreeMesh(FVector playerPos = FVector(), bool allow
 	if(GetWorld()->IsGameWorld() && allowThread) {
 		QuadTreeMeshDataThread = new FQuadTreeMeshDataThread(TerrainMesh,&QTree,Settings.UVScale,Settings.DepthFilter,0,true,NoiseTexture,Settings.Size.Z);
 	} else {
-		// double start = FPlatformTime::Seconds();
 		FMeshData MeshData = UMeshDataGenerator::QuadTreeMesh(NoiseTexture,&QTree,Settings.NoiseStepSize,Settings.UVScale,Settings.DepthFilter,Settings.Size.Z);
 		MeshData.CreateProceduralMesh(TerrainMesh);
 		MeshData.ConfigureForNavigation(TerrainMesh);
-
-		// double end = FPlatformTime::Seconds();
-		// UE_LOG(TerrainGenerator,VeryVerbose,TEXT("TerrainChunk %s::CreateQuadMesh() => Duration: %f s"),*GetActorLabel(),end-start);
 	}
 }
 
@@ -163,13 +157,9 @@ void ATerrainChunk::CreateRectMesh(bool allowThread)
 	if(GetWorld()->IsGameWorld() && allowThread && false) {
 		// RectMeshDataThread = new FRectMeshDataThread(TerrainMesh,position,Settings.Size,FVector2D(Settings.MeshResolution,Settings.MeshResolution),Settings.WaterUVScale,0,true,&Settings.NoiseSettings,Settings.Size.Z);
 	} else {
-		// double start = FPlatformTime::Seconds();
 		FMeshData MeshData = UMeshDataGenerator::RectMesh(NoiseTexture,position,Settings.Size,Settings.NoiseStepSize,400,Settings.UVScale,Settings.Size.Z);
 		MeshData.CreateProceduralMesh(TerrainMesh);
 		MeshData.ConfigureForNavigation(TerrainMesh);
-		
-		// double end = FPlatformTime::Seconds();
-		// UE_LOG(TerrainGenerator,VeryVerbose,TEXT("TerrainChunk %s::CreateWaterMesh() => Duration: %f s"),*GetActorLabel(),end-start);
 	}
 }
 
@@ -179,15 +169,10 @@ void ATerrainChunk::CreateWaterMesh(bool allowThread)
 	if(GetWorld()->IsGameWorld() && allowThread) {
 		WaterMeshDataThread = new FRectMeshDataThread(WaterMesh,position,Settings.Size,FVector2D(resolution,resolution),Settings.WaterUVScale,0,false);
 	} else {
-		// double start = FPlatformTime::Seconds();
-	
 		FMeshData MeshData = UMeshDataGenerator::RectMesh(position,Settings.Size,FVector2D(resolution,resolution),Settings.WaterUVScale,nullptr,0);
 		MeshData.CreateProceduralMesh(WaterMesh,0,false);
 
 		hasWater = true;
-		
-		// double end = FPlatformTime::Seconds();
-		// UE_LOG(TerrainGenerator,VeryVerbose,TEXT("TerrainChunk %s::CreateWaterMesh() => Duration: %f s"),*GetActorLabel(),end-start);
 	}
 }
  
@@ -233,7 +218,7 @@ void ATerrainChunk::CreateFoliage(FVector playerPos, bool allowThread, bool rege
 	// UE_LOG(TerrainGenerator,Log,TEXT("TerrainChunk::CreateFoliage() => Total Instances: %d, Total Meshes: %d Duration: %f s"),totalInstances,totalMeshes,end-start);	
 }
 
-void ATerrainChunk::InstanceFoliage(TArray<UInstancedStaticMeshComponent*>* StaticMeshComponents, TArray<UStaticMesh*>* Foliage, TArray<FVector2D>* Points, FVector Offset, FVector Scale, FMinMax ElevationMinMax, FMinMax SlopeMinMax, bool Collision = false)
+void ATerrainChunk::InstanceFoliage(TArray<UInstancedStaticMeshComponent*>* StaticMeshComponents, TArray<UStaticMesh*>* Foliage, TArray<FVector2D>* Points, FVector Offset, FVector Scale, FMinMax ElevationMinMax, FMinMax SlopeMinMax, bool RotateToTerrain, bool Collision = false)
 {
 	for(int i = 0; i < Foliage->Num(); i++)	{
 		UInstancedStaticMeshComponent* newISM = (UInstancedStaticMeshComponent*)AddComponentByClass(UInstancedStaticMeshComponent::StaticClass(),true,FTransform(),false);
@@ -248,7 +233,8 @@ void ATerrainChunk::InstanceFoliage(TArray<UInstancedStaticMeshComponent*>* Stat
 		FTerrainEvaluationData TEData;
 		EvaluateTerrain(NoiseTexture,FVector(Points->operator[](i).X,Points->operator[](i).Y,0),Settings.Size.Z,ElevationMinMax.ToVector2D(),SlopeMinMax.ToVector2D(),&TEData);
 		if(TEData.valid) {
-			FTransform InstanceTransform(FRotator(0,FMath::RandRange(-180.0f,180.0f),0),FVector(Points->operator[](i).X+position.X,Points->operator[](i).Y+position.Y,TEData.height)+Offset,Scale);
+			FRotator rotator = RotateToTerrain ? TEData.up : FRotator(0,FMath::RandRange(-180.0f,180.0f),0);
+			FTransform InstanceTransform(rotator,FVector(Points->operator[](i).X+position.X,Points->operator[](i).Y+position.Y,TEData.height)+Offset,Scale);
 			StaticMeshComponents->operator[](RandomIndex)->AddInstance(InstanceTransform,true);
 		}
 	}	
@@ -257,58 +243,18 @@ void ATerrainChunk::InstanceFoliage(TArray<UInstancedStaticMeshComponent*>* Stat
 
 void ATerrainChunk::InstanceFoliage(FFoliageGroupData* FoliageGroupData, FFoliageGroupSettings* FoliageGroupSettings)
 {
-	InstanceFoliage(&FoliageGroupData->FoliageInstances,&FoliageGroupSettings->Foliage,&FoliageGroupData->FoliagePoints,FoliageGroupSettings->FoliageOffset,FoliageGroupSettings->FoliageScale,FoliageGroupSettings->ElevationMinMax,FoliageGroupSettings->SlopeMinMax,FoliageGroupSettings->EnableCollision);
+	InstanceFoliage(&FoliageGroupData->FoliageInstances,&FoliageGroupSettings->Foliage,&FoliageGroupData->FoliagePoints,FoliageGroupSettings->FoliageOffset,FoliageGroupSettings->FoliageScale,FoliageGroupSettings->ElevationMinMax,FoliageGroupSettings->SlopeMinMax,FoliageGroupSettings->RotateToTerrain,FoliageGroupSettings->EnableCollision);
 	FoliageGroupData->hasFoliage = true;
 }
 
 //MISC
-
-bool ATerrainChunk::EvaluateTerrain(FVector pos, FNoiseSettings* NoiseSettings, int heightMultiplier, FVector2D elevationLimits, FVector2D slopeLimits, FTerrainEvaluationData* data)
-{
-	float height = UNoise::Evaluate2D(pos,NoiseSettings) * heightMultiplier;
-	FVector hpos = FVector(pos.X,pos.Y,height);
-	float slope = EvaluateSlope(hpos,NoiseSettings,heightMultiplier);
-
-	bool heightValid = false;
-	bool slopeValid = false;
-
-	if((elevationLimits.X <= height && elevationLimits.Y >= height) || elevationLimits.X == elevationLimits.Y) {
-		heightValid = true;
-	}
-	if(slopeLimits.X <= slope && slopeLimits.Y >= slope)
-	{
-		slopeValid = true;
-	}
-
-	bool isValid = heightValid && slopeValid;
-
-	if(data != nullptr)
-	{
-		data->valid = isValid;
-		data->height = height;
-		data->slope = slope;	
-	}
-	
-	return isValid;	
-}
-
-float ATerrainChunk::EvaluateSlope(FVector pos,FNoiseSettings* NoiseSettings, int heightMultiplier)
-{
-	float height = pos.Z; 
-	float heightX =  UNoise::Evaluate2D(pos+FVector(100,0,0),NoiseSettings) * heightMultiplier;
-	float heightY =  UNoise::Evaluate2D(pos+FVector(0,100,0),NoiseSettings) * heightMultiplier;
-
-	float slopeX = FMath::Abs(heightX - height) / 100;
-	float slopeY = FMath::Abs(heightY - height) / 100;
-
-	return slopeX > slopeY ? slopeX : slopeY;
-}
 
 bool ATerrainChunk::EvaluateTerrain(UTexture2D* Texture, FVector pos, int heightMultiplier, FVector2D elevationLimits, FVector2D slopeLimits, FTerrainEvaluationData* data)
 {
 	float height = UTextureUtils::SampleTextureR16f(Texture,FIntVector2(pos.X/100,pos.Y/100)) * heightMultiplier;
 	FVector hpos = FVector(pos.X,pos.Y,height);
 	float slope = EvaluateSlope(Texture,hpos,heightMultiplier);
+	FRotator up = EvaluateUp(Texture,hpos,heightMultiplier);
 
 	bool heightValid = false;
 	bool slopeValid = false;
@@ -319,15 +265,13 @@ bool ATerrainChunk::EvaluateTerrain(UTexture2D* Texture, FVector pos, int height
 	if(slopeLimits.X <= slope && slopeLimits.Y >= slope) {
 		slopeValid = true;
 	}
-
 	bool isValid = heightValid && slopeValid;
 
-	if(data != nullptr)
-	{
-		
+	if(data != nullptr)	{
 		data->valid = isValid;
 		data->height = height;
-		data->slope = slope;	
+		data->slope = slope;
+		data->up = up;
 	}
 	
 	return isValid;	
@@ -343,6 +287,45 @@ float ATerrainChunk::EvaluateSlope(UTexture2D* Texture, FVector pos, int heightM
 	float slopeY = FMath::Abs(heightY - height) / 100;
 
 	return slopeX > slopeY ? slopeX : slopeY;
+}
+
+FRotator ATerrainChunk::EvaluateUp(UTexture2D* Texture, FVector pos, int heightMultiplier)
+{
+    float heightAtPos = UTextureUtils::SampleTextureR16f(Texture, FIntVector2(pos.X / Settings.NoiseStepSize, pos.Y / Settings.NoiseStepSize)) * heightMultiplier;
+
+    // Sample the height at a neighboring position in the X direction
+    FVector neighborPosX = pos + FVector(Settings.NoiseStepSize, 0, 0);
+    float heightAtNeighborX = UTextureUtils::SampleTextureR16f(Texture, FIntVector2(neighborPosX.X / Settings.NoiseStepSize, neighborPosX.Y / Settings.NoiseStepSize)) * heightMultiplier;
+
+    // Sample the height at a neighboring position in the Y direction
+    FVector neighborPosY = pos + FVector(0, Settings.NoiseStepSize, 0);
+    float heightAtNeighborY = UTextureUtils::SampleTextureR16f(Texture, FIntVector2(neighborPosY.X / Settings.NoiseStepSize, neighborPosY.Y / Settings.NoiseStepSize)) * heightMultiplier;
+
+    // Create the vectors for X and Y directions with height included
+    FVector pointX = neighborPosX + FVector(0, 0, heightAtNeighborX);
+    FVector pointY = neighborPosY + FVector(0, 0, heightAtNeighborY);
+    FVector currentPoint = pos + FVector(0, 0, heightAtPos);
+
+    // Compute the forward vector (X direction)
+    FVector XVector = (pointX - currentPoint).GetSafeNormal();
+
+    // Compute the right vector (Y direction)
+    FVector YVector = (pointY - currentPoint).GetSafeNormal();
+
+    // Compute the up vector (Z direction) as the cross product of the X and Y vectors
+    FVector ZVector = FVector::CrossProduct(XVector, YVector).GetSafeNormal();
+
+    // Recompute the Y vector to ensure orthogonality
+    YVector = FVector::CrossProduct(ZVector, XVector).GetSafeNormal();
+
+    FMatrix RotationMatrix = FMatrix(
+        XVector,   // X Axis (Forward)
+        YVector,   // Y Axis (Right)
+        ZVector,   // Z Axis (Up)
+        FVector::ZeroVector // Origin
+    );
+
+    return RotationMatrix.Rotator();
 }
 
 FVector ATerrainChunk::CoordToPos(FVector2D chunkCoord, int chunkSize)

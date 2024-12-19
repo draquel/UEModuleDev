@@ -36,12 +36,15 @@ struct FFoliageGroupSettings
 
 	UPROPERTY(EditAnywhere)
 	FMinMax SlopeMinMax;
+
+	UPROPERTY(EditAnywhere)
+	bool RotateToTerrain = false;
+	
+	UPROPERTY(EditAnywhere)
+	bool EnableCollision = false;
 	
 	UPROPERTY(EditAnywhere)
 	TArray<UStaticMesh*> Foliage;
-
-	UPROPERTY(EditAnywhere)
-	bool EnableCollision = false;
 };
 
 /*

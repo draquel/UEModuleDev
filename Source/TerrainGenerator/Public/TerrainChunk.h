@@ -21,6 +21,7 @@ struct FTerrainEvaluationData
 	bool valid;
 	float height;
 	float slope;
+	FRotator up;
 };
 
 UCLASS()
@@ -30,9 +31,6 @@ class TERRAINGENERATOR_API ATerrainChunk : public AActor
 	
 public:	
 	ATerrainChunk();
-	static bool EvaluateTerrain(FVector pos, FNoiseSettings* NoiseSettings, int heightMultiplier, FVector2D elevationLimits, FVector2D slopeLimits, FTerrainEvaluationData* data);
-	static float EvaluateSlope(FVector pos, FNoiseSettings* NoiseSettings, int heightMultiplier);
-	bool EvaluateTerrain(UTexture2D* Texture, FVector pos, int heightMultiplier, FVector2D elevationLimits, FVector2D slopeLimits, FTerrainEvaluationData* data);
 
 	UPROPERTY(EditAnywhere)
 	FVector2D Coord;
@@ -84,12 +82,12 @@ public:
 	void CreateRectMesh(bool allowThread = true);
 	void CreateWaterMesh(bool allowThread = true);
 	void CreateFoliage(FVector playerPos, bool allowThread, bool regenerate = false);
-	void InstanceFoliage(TArray<UInstancedStaticMeshComponent*>* StaticMeshComponents, TArray<UStaticMesh*>* Foliage, TArray<FVector2D>* Points, FVector Offset, FVector Scale, FMinMax ElevationMinMax, FMinMax SlopeMinMax, bool Collision);
+	void InstanceFoliage(TArray<UInstancedStaticMeshComponent*>* StaticMeshComponents, TArray<UStaticMesh*>* Foliage, TArray<FVector2D>* Points, FVector Offset, FVector Scale, FMinMax ElevationMinMax, FMinMax SlopeMinMax, bool RotateToTerrain, bool Collision);
 	void InstanceFoliage(FFoliageGroupData* FoliageGroupData, FFoliageGroupSettings* FoliageGroupSettings);
 
 	UFUNCTION(BlueprintCallable)
 	void DebugDraw(float life = 30, FColor color = FColor::Red);
-	float EvaluateSlope(UTexture2D* Texture, FVector pos, int heightMultiplier);
+	
 	UFUNCTION(BlueprintCallable)
 	static FVector CoordToPos(FVector2D chunkCoord, int chunkSize);
 	UFUNCTION(BlueprintCallable)
@@ -101,6 +99,10 @@ protected:
 	virtual void OnConstruction(const FTransform& Transform) override;
 	
 	UQuadTree QTree;
+	
+	float EvaluateSlope(UTexture2D* Texture, FVector pos, int heightMultiplier);
+	FRotator EvaluateUp(UTexture2D* Texture, FVector pos, int heightMultiplier);
+	bool EvaluateTerrain(UTexture2D* Texture, FVector pos, int heightMultiplier, FVector2D elevationLimits, FVector2D slopeLimits, FTerrainEvaluationData* data);
 
 	void DebugDrawBounds(float life = 30, FColor color = FColor::Red);
 	void DebugDrawPositionMarker(float life = 30, FColor color = FColor::Red);
