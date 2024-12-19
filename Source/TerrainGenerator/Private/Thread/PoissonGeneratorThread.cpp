@@ -18,7 +18,7 @@ void FPoissonGeneratorThread::Exit()
 		for (auto Point : Points) {
 			Data->FoliagePoints.Add(Point);
 		}
-		Chunk->InstanceFoliage(&Data->FoliageInstances,&Settings->Foliage,&Points,Settings->FoliageOffset,Settings->FoliageScale,Settings->ElevationMinMax,Settings->SlopeMinMax, Settings->EnableCollision);
+		Chunk->InstanceFoliage(&Data->FoliageInstances,&Settings->Foliage,&Points,Settings->FoliageOffset,Settings->FoliageScale,Settings->ElevationMinMax,Settings->SlopeMinMax, Settings->RotateToTerrain, Settings->EnableCollision);
 		Data->hasFoliage = true;
 	}); 
 }

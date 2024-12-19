@@ -127,10 +127,7 @@ void ATerrainChunk::GenerateNoise(FVector playerPos,bool allowThread)
 	UNoise::GenerateMap2D(FIntVector(pos.X-1,pos.Y-1,pos.Z),FIntVector2(Settings.Size.X+Settings.NoiseStepSize*2,Settings.Size.Y+Settings.NoiseStepSize*2),Settings.NoiseStepSize,Settings.NoiseSettings,[this,playerPos,allowThread](FNoiseMap2d* NoiseMap)	{
 		NoiseTexture = UNoise::GenerateDataTexture(NoiseMap,FName(FString::Printf(TEXT("Chunk (%lld,%lld) Noise"),FMath::FloorToInt(Coord.X),FMath::FloorToInt(Coord.Y))));
 		NoiseMinMax = NoiseMap->MinMax;
-		CreateTerrainMesh(playerPos,allowThread);
-		if(Settings.EnableWater && NoiseMinMax.min < 0){ if(!hasWater){ CreateWaterMesh(allowThread); } WaterCausticsDecal->SetVisibility(true); } else { WaterMesh->ClearMeshSection(0); WaterCausticsDecal->SetVisibility(false); hasWater = false; }
-		if(Settings.EnableFoliage) { CreateFoliage(playerPos, allowThread); }
-		DebugDraw(0.75f,FColor::Orange);	
+		Update(playerPos,allowThread);
 	});
 }
 

@@ -241,7 +241,6 @@ void AInfiniteTerrain::ProcessChunkQueues(bool allowThreads = false)
 	int updateCount = 0;
 
 	if(!UpdateKeys.IsEmpty() && !isUpdatingChunks) {
-		double start = FPlatformTime::Seconds();
 		int i;
 		for(i = updateCount; i < UpdateResolution; i++) {
 			if(!UpdateKeys.Peek()){ break; }
@@ -250,14 +249,12 @@ void AInfiniteTerrain::ProcessChunkQueues(bool allowThreads = false)
 			ATerrainChunk* chunk = *TerrainChunkMap.Find(key);
 			if(chunk->IsHidden()){ chunk->Enable(); }
 			else { chunk->Update(PlayerPositionLastUpdate, allowThreads); }
-			UE_LOG(TerrainGenerator,VeryVerbose,TEXT("InfiniteTerrain::UpdateChunks() => Chunk %s Updated"),*key.ToString());
+			UE_LOG(TerrainGenerator,VeryVerbose,TEXT("InfiniteTerrain::ProcessChunkQueues() => Chunk %s Updated"),*key.ToString());
 		}
-		double end = FPlatformTime::Seconds();
-		UE_LOG(TerrainGenerator,Log,TEXT("InfiniteTerrain::UpdateChunks() Thread => Updated %i Chunks in %f"),i,end-start);
+		UE_LOG(TerrainGenerator,Log,TEXT("InfiniteTerrain::ProcessChunkQueues() Thread => Updating %i Chunks"),i);
 	}
 	
 	if(!AddKeys.IsEmpty() && !isUpdatingChunks) {
-		double start = FPlatformTime::Seconds();
 		int i;
 		for(i = updateCount; i < UpdateResolution; i++) {
 			if(!AddKeys.Peek()){ break; }
@@ -265,25 +262,25 @@ void AInfiniteTerrain::ProcessChunkQueues(bool allowThreads = false)
 			AddKeys.Dequeue(key);		
 			TerrainChunkMap.Add(key,CreateChunk(key));
 			UpdateKeys.Enqueue(key);
-			UE_LOG(TerrainGenerator,VeryVerbose,TEXT("InfiniteTerrain::UpdateChunks() => Chunk %s Added"),*key.ToString());
+			UE_LOG(TerrainGenerator,VeryVerbose,TEXT("InfiniteTerrain::ProcessChunkQueues() => Chunk %s Added"),*key.ToString());
 		}
-		double end = FPlatformTime::Seconds();
-		UE_LOG(TerrainGenerator,Log,TEXT("InfiniteTerrain::UpdateChunks() Thread => Added %i Chunks in %f"),i,end-start);
+		UE_LOG(TerrainGenerator,Log,TEXT("InfiniteTerrain::ProcessChunkQueues() Thread => Adding %i Chunks"),i);
 	}
 	
 	if(!DisableKeys.IsEmpty() && !isUpdatingChunks) {
-		for(int i = updateCount; i < UpdateResolution; i++) {
+		int i;
+		for(i = updateCount; i < UpdateResolution; i++) {
 			if(!DisableKeys.Peek()){ break; }
 			FVector2D key;
 			DisableKeys.Dequeue(key);
 			ATerrainChunk* chunk = *TerrainChunkMap.Find(key);
 			chunk->Disable();
-			UE_LOG(TerrainGenerator,VeryVerbose,TEXT("InfiniteTerrain::UpdateChunks() => Chunk %s Disabled"),*key.ToString());
+			UE_LOG(TerrainGenerator,VeryVerbose,TEXT("InfiniteTerrain::ProcessChunkQueues() => Chunk %s Disabled"),*key.ToString());
 		}
+		UE_LOG(TerrainGenerator,Log,TEXT("InfiniteTerrain::ProcessChunkQueues() Thread => Disabling %i Chunks"),i);
 	}
 
 	if(!RemoveKeys.IsEmpty() && !isUpdatingChunks) {
-		double start = FPlatformTime::Seconds();
 		int i;
 		for(i = updateCount; i < UpdateResolution; i++) {
 			if(!RemoveKeys.Peek()){ break; }
@@ -293,10 +290,9 @@ void AInfiniteTerrain::ProcessChunkQueues(bool allowThreads = false)
 			c->DebugDraw(0.5f,FColor::Red);
 			c->Destroy();
 			TerrainChunkMap.Remove(key);
-			UE_LOG(TerrainGenerator,VeryVerbose,TEXT("InfiniteTerrain::UpdateChunks() => Chunk %s Destroyed"),*key.ToString())
+			UE_LOG(TerrainGenerator,VeryVerbose,TEXT("InfiniteTerrain::ProcessChunkQueues() => Chunk %s Destroyed"),*key.ToString())
 		}
-		double end = FPlatformTime::Seconds();
-		UE_LOG(TerrainGenerator,Log,TEXT("InfiniteTerrain::UpdateChunks() Thread => Destroyed %i Chunks in %f"),i,end-start);
+		UE_LOG(TerrainGenerator,Log,TEXT("InfiniteTerrain::ProcessChunkQueues() Thread => Destroying %i Chunks"),i);
 	}
 }
 
