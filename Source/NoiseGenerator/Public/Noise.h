@@ -263,8 +263,10 @@ public:
 	static void GenerateMap3D(FNoiseMap3d& NoiseMap,TArray<FNoiseLayer3DData>* layerData);
 	
 	//Needs unique Name -- Accessors for CPU & GPU Generation, with callback to handle Async uniformily.
-	static void GenerateMap3D(FIntVector pos, FIntVector mapSize, int stepSize, FNoiseSettings NoiseSettings, NoiseDensityFunction DensityFunction, TFunction<void(FNoiseMap3d NoiseMap)> Callback);
-	static void GenerateMap3D(FIntVector pos, FIntVector mapSize, int stepSize, TArray<FNoiseSettings> NoiseSettings, NoiseDensityFunction DensityFunction, TFunction<void(FNoiseMap3d NoiseMap)> Callback);
+	static void GenerateMap3D(FIntVector pos, FIntVector mapSize, int stepSize, FNoiseSettings NoiseSettings, NoiseDensityFunction DensityFunction, TFunction
+	                          <void(FNoiseMap3d* NoiseMap)> Callback);
+	static void GenerateMap3D(FIntVector pos, FIntVector mapSize, int stepSize, TArray<FNoiseSettings> NoiseSettings, NoiseDensityFunction
+	                          DensityFunction, TFunction<void(FNoiseMap3d* NoiseMap)> Callback);
 	
 	//3D TEXTURE Generators
 	static UVolumeTexture* GenerateTexture(FNoiseMap3d* NoiseMap, UCurveLinearColor* ColorCurve);

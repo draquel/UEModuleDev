@@ -109,8 +109,8 @@ void AMeshGeneratorExample::Generate()
 			GenerateQuadTree();
 			break;
 		case 2:
-			UNoise::GenerateMap3D((FIntVector)GetActorLocation(),(FIntVector)(Size+StepSize),StepSize,NoiseSettings3D,Floor,[this](FNoiseMap3d NoiseMap){
-				this->NoiseMap3D = &NoiseMap; 
+			UNoise::GenerateMap3D((FIntVector)GetActorLocation(),(FIntVector)(Size+StepSize),StepSize,NoiseSettings3D,Floor,[this](FNoiseMap3d* NoiseMap){
+				this->NoiseMap3D = NoiseMap; 
 				FMeshData Data = UMeshDataGenerator::MarchingCubes(NoiseMap3D,GetActorLocation(),Size,StepSize,UVScale,MarchingCubesSettings);
 				UpdateMesh(&Data);	
 			});

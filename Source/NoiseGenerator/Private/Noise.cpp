@@ -484,7 +484,7 @@ FNoiseMap3d UNoise::GenerateMap3D(FIntVector pos, FIntVector mapSize, int stepSi
 	
 	return NoiseMap;
 }
-//Create FNoiseMap2D from a TArray of FNoiseLayerData to create Layered Noise
+//Create FNoiseMap3D from a TArray of FNoiseLayerData to create Layered Noise
 void UNoise::GenerateMap3D(FNoiseMap3d& NoiseMap, TArray<FNoiseLayer3DData>* layerData)
 {
 	float gain = 0.0f;
@@ -510,7 +510,7 @@ void UNoise::GenerateMap3D(FNoiseMap3d& NoiseMap, TArray<FNoiseLayer3DData>* lay
 	}	
 }
 
-void UNoise::GenerateMap3D(FIntVector pos, FIntVector mapSize, int stepSize, FNoiseSettings NoiseSettings, NoiseDensityFunction DensityFunction, TFunction<void(FNoiseMap3d NoiseMap)> Callback)
+void UNoise::GenerateMap3D(FIntVector pos, FIntVector mapSize, int stepSize, FNoiseSettings NoiseSettings, NoiseDensityFunction DensityFunction, TFunction<void(FNoiseMap3d* NoiseMap)> Callback)
 {
 	int32 cycles = ((mapSize.X * mapSize.Y * mapSize.Z) / stepSize) * NoiseSettings.octaves;
 	double start = FPlatformTime::Seconds();
@@ -525,7 +525,7 @@ void UNoise::GenerateMap3D(FIntVector pos, FIntVector mapSize, int stepSize, FNo
 		FNoiseMap3d NoiseMap = GenerateMap3D(pos,mapSize,stepSize,&NoiseSettings,DensityFunction);
 		double end = FPlatformTime::Seconds();
 		UE_LOG(NoiseGenerator,Log,TEXT("UNoise::GenerateMap3D ==> %s-%s, Cycles: %u, RunTime: %fs"),*UEnum::GetValueAsString(NoiseSettings.source),*UEnum::GetValueAsString(NoiseSettings.type),cycles,end-start);
-		Callback(NoiseMap);
+		Callback(&NoiseMap);
 		return;
 	}
 
@@ -540,11 +540,11 @@ void UNoise::GenerateMap3D(FIntVector pos, FIntVector mapSize, int stepSize, FNo
 		}
 		double end = FPlatformTime::Seconds();
 		UE_LOG(NoiseGenerator,Log,TEXT("UNoise::GenerateMap3D ==> %s-%s, Cycles: %u, RunTime: %fs"),*UEnum::GetValueAsString(NoiseSettings.source),*UEnum::GetValueAsString(NoiseSettings.type),cycles,end-start);
-		Callback(NoiseMap);
+		Callback(&NoiseMap);
 	});
 }
 
-void UNoise::GenerateMap3D(FIntVector pos, FIntVector mapSize, int stepSize, TArray<FNoiseSettings> NoiseSettings, NoiseDensityFunction DensityFunction, TFunction<void(FNoiseMap3d NoiseMap)> Callback)
+void UNoise::GenerateMap3D(FIntVector pos, FIntVector mapSize, int stepSize, TArray<FNoiseSettings> NoiseSettings, NoiseDensityFunction DensityFunction, TFunction<void(FNoiseMap3d* NoiseMap)> Callback)
 {
 	//Count of NoiseSettings with a positive gain in the array
 	int32 count = Algo::Accumulate(NoiseSettings, 0, [](int32 Total, const FNoiseSettings& Item) { return Total + (Item.gain > 0 ? 1 : 0); });
@@ -591,7 +591,7 @@ void UNoise::GenerateMap3D(FIntVector pos, FIntVector mapSize, int stepSize, TAr
 		GenerateMap3D(NoiseMap,&ResultData);
 		double end = FPlatformTime::Seconds();
 		UE_LOG(NoiseGenerator,Log,TEXT("UNoise::GenerateMap3D ==> %s [%d], Cycles: %u, RunTime: %f"),TEXT("Layered - CPU"),ResultData.Num(),cycles,end-start);
-		Callback(NoiseMap);
+		Callback(&NoiseMap);
 		return;	
 	}
 	
@@ -619,7 +619,7 @@ void UNoise::GenerateMap3D(FIntVector pos, FIntVector mapSize, int stepSize, TAr
 		GenerateMap3D(NoiseMap,&ResultData);
 		double end = FPlatformTime::Seconds();
 		UE_LOG(NoiseGenerator,Log,TEXT("UNoise::GenerateMap3D ==> %s [%d], Cycles: %u, RunTime: %f"),CPUMaps.Num()>0?TEXT("Layered CPU/GPU"):TEXT("Layered GPU"),ResultData.Num(),cycles,end-start);
-		Callback(NoiseMap);
+		Callback(&NoiseMap);
 	});
 }
 
