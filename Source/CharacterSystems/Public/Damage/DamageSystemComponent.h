@@ -1,7 +1,7 @@
 #pragma once
 #include "CoreMinimal.h"
-#include "FDamageInfo.h"
-#include "UDamageSystemComponent.generated.h"
+#include "DamageInfo.h"
+#include "DamageSystemComponent.generated.h"
 
 class UStatsComponent;
 

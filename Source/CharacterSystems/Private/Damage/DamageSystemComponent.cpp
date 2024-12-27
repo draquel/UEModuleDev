@@ -1,4 +1,4 @@
-#include "Damage/UDamageSystemComponent.h"
+#include "Damage/DamageSystemComponent.h"
 
 #include "Stats/StatsComponent.h"
 

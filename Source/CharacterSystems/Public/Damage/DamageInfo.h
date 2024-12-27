@@ -1,7 +1,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "FDamageInfo.generated.h"
+#include "DamageInfo.generated.h"
 
 UENUM(BlueprintType, meta=(ScriptName="DamageTypeEnum"))
 enum EDamageType

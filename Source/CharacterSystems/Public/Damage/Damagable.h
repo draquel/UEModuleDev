@@ -3,7 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "FDamageInfo.h"
+#include "DamageInfo.h"
 #include "UObject/Interface.h"
 #include "Damagable.generated.h"
 
