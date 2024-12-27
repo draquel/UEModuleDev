@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "Damage/Damagable.h"
+#include "Equipment/EquipmentSystemComponent.h"
 #include "GameFramework/Character.h"
 #include "BaseCharacter.generated.h"
 
@@ -23,6 +24,10 @@ public:
 protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
+
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="CharacterComponents")
+	TMap<TEnumAsByte<EEquipmentSocket>, UStaticMeshComponent*> EquipmentMeshComponents;
 	
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = CharacterComponents, meta = (AllowPrivateAccess = "true"))
 	UInventoryComponent* Inventory;
@@ -33,6 +38,9 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = CharacterComponents, meta = (AllowPrivateAccess = "true"))
 	UDamageSystemComponent* DamageSystem;
 
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = CharacterComponents, meta = (AllowPrivateAccess = "true"))
+	UEquipmentSystemComponent* EquipmentSystem;
+	
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Character)
 	bool IsAlive = true;
 
