@@ -64,6 +64,13 @@ void AItemBase::AddToDatabase(USQLiteManager* SQLiteConnection)
 	PreparedStatement->SetBindingValueByName(TEXT("@Scale"),Definition.Scale);
 	PreparedStatement->SetBindingValueByName(TEXT("@OverlapRadius"),Definition.OverlapRadius);
 	SQLiteConnection->RunAction(PreparedStatement);
+	
+	FSQLitePreparedStatement* IdPreparedStatement = SQLiteConnection->CreatePreparedStatement(TEXT("SELECT last_insert_rowid();"));
+	while(IdPreparedStatement->Step() == ESQLitePreparedStatementStepResult::Row) {
+		IdPreparedStatement->GetColumnValueByIndex(0,Definition.Id);
+		Id = Definition.Id;
+	}
+	
 	UE_LOG(LogTemp,Log,TEXT("Added Item '%s' to Database"),*Definition.Name.ToString());
 }
 
@@ -141,7 +148,7 @@ void AItemBase::Update()
 
 void AItemBase::CenterSphereOnMesh() const
 {
-	if (!Mesh || !Sphere) {
+	if (!Mesh || !Mesh->GetStaticMesh() || !Sphere) {
 		return; 
 	}
 
@@ -196,6 +203,63 @@ bool AContainer::CanInteract(AActor* Interactor) const
 	return true;
 }
 
+AWeapon::AWeapon()
+{
+	
+}
+
+void AWeapon::AddToDatabase(USQLiteManager* SQLiteConnection)
+{
+	Super::AddToDatabase(SQLiteConnection);
+	FSQLitePreparedStatement* PreparedStatement = SQLiteConnection->CreatePreparedStatement(TEXT("INSERT INTO weapons (item,type,attack_power) VALUES(@item,@type,@attack)"));
+	PreparedStatement->SetBindingValueByName(TEXT("@item"),Definition.Id);
+	PreparedStatement->SetBindingValueByName(TEXT("@type"),WeaponDetails.Type.GetValue());
+	PreparedStatement->SetBindingValueByName(TEXT("@attack"),WeaponDetails.AttackPower);
+	SQLiteConnection->RunAction(PreparedStatement);
+}
+
+void AWeapon::UpdateDatabase(USQLiteManager* SQLiteConnection)
+{
+	Super::UpdateDatabase(SQLiteConnection);
+	FSQLitePreparedStatement* PreparedStatement = SQLiteConnection->CreatePreparedStatement(TEXT("UPDATE weapons SET type=@type,attack_power=@attack WHERE item = @item"));
+	PreparedStatement->SetBindingValueByName(TEXT("@item"),Definition.Id);
+	PreparedStatement->SetBindingValueByName(TEXT("@type"),WeaponDetails.Type.GetValue());
+	PreparedStatement->SetBindingValueByName(TEXT("@attack"),WeaponDetails.AttackPower);
+	SQLiteConnection->RunAction(PreparedStatement);
+}
+
+void AWeapon::LoadFromDatabase(USQLiteManager* SQLiteConnection)
+{
+	UE_LOG(LogTemp,Log,TEXT("Loading weapons from database"));
+	Super::LoadFromDatabase(SQLiteConnection);
+	FSQLitePreparedStatement* PreparedStatement = SQLiteConnection->CreatePreparedStatement(TEXT("SELECT * FROM weapons WHERE item = @item"));
+	PreparedStatement->SetBindingValueByName(TEXT("@item"),Id);
+
+	uint8 type;
+	while(PreparedStatement->Step() == ESQLitePreparedStatementStepResult::Row)	{
+		if(PreparedStatement->GetColumnValueByName(TEXT("type"),type) &&	PreparedStatement->GetColumnValueByName(TEXT("attack_power"),WeaponDetails.AttackPower))	{
+			WeaponDetails.Type = static_cast<TEnumAsByte<EWeaponType>>(type);
+			break;
+		}
+	}
+	
+	PreparedStatement->Destroy();
+	delete PreparedStatement;
+}
+
+void AWeapon::LoadTest()
+{
+	if(Id > 0) {
+		UE_LOG(LogTemp,Log,TEXT("Load Test"));
+		USQLiteManager* SQLiteConnection = USQLiteManager::GetGIDatabaseManager(GetWorld());
+		if(SQLiteConnection != nullptr){ LoadFromDatabase(SQLiteConnection); }
+		else { UE_LOG(LogTemp, Error, TEXT("AWeapon::Database Load Error")); }
+		Update();
+	}
+}
+
+
+
 void AAmmunition::OnOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
 {
 	UE_LOG(LogTemp, Display, TEXT("Ammunition::OnOverlap"));
@@ -214,7 +278,6 @@ AAmmunition::AAmmunition()
 	
 	Mesh->OnComponentHit.AddDynamic(this, &AAmmunition::OnHit);
 	Sphere->OnComponentBeginOverlap.AddDynamic(this, &AAmmunition::OnOverlap);
-	
 }
 
 void AAmmunition::OnHit(UPrimitiveComponent* HitComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, FVector NormalImpulse, const FHitResult& Hit)

@@ -37,8 +37,12 @@ void AItemManager::LoadItemDefinitions()
 	}
 
 	for (AItemBase* Item : Items) {
-		Item->LoadFromDatabase(SQLiteManager);
-		Item->Update();
+		if (Item->Definition.Type == Weapon){
+			AWeapon* Weapon = Cast<AWeapon>(Item);
+		} else {
+			Item->LoadFromDatabase(SQLiteManager);
+			Item->Update();	
+		}
 	}
 
 	SQLiteManager->Disconnect();

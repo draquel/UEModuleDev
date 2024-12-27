@@ -24,15 +24,14 @@ enum EItemType{
 	Common UMETA(DisplayName="Common")
 };
 
-// UENUM(BlueprintType)
-// enum EWeaponType{
-// 	One_Hand UMETA(DisplayName="One Hand"),
-// 	Off_Hand UMETA(DisplayName="Off Hand"),
-// 	Two_Hand UMETA(DisplayName="Two Hand"),
-// 	Bow UMETA(DisplayName="Bow"),
-// 	Firearm UMETA(DisplayName="Firearm"),
-// 	Shield1 UMETA(DisplayName="Shield"),
-// };
+UENUM(BlueprintType)
+enum EWeaponType{
+	One_Hand UMETA(DisplayName="One Hand"),
+	Off_Hand UMETA(DisplayName="Off Hand"),
+	Two_Hand UMETA(DisplayName="Two Hand"),
+	Bow UMETA(DisplayName="Bow"),
+	Shield UMETA(DisplayName="Shield"),
+};
 
 USTRUCT(BlueprintType)
 struct FItemDefinition : public FTableRowBase
@@ -70,6 +69,40 @@ struct FItemDefinition : public FTableRowBase
 	}	
 };
 
+USTRUCT(BlueprintType)
+struct FWeaponDetails{
+	GENERATED_BODY()
+
+	UPROPERTY(EditAnywhere,BlueprintReadWrite)
+	TEnumAsByte<EWeaponType> Type;
+
+	UPROPERTY(EditAnywhere,BlueprintReadWrite)
+	float AttackPower;
+
+	FWeaponDetails() {
+		Type = One_Hand;
+		AttackPower = 1;
+	};
+};
+
+USTRUCT(BlueprintType)
+struct FWeaponDefinition
+{
+	GENERATED_BODY()
+
+	UPROPERTY(EditAnywhere,BlueprintReadWrite)
+	FItemDefinition Item;
+	
+	UPROPERTY(EditAnywhere,BlueprintReadWrite)
+	FWeaponDetails WeaponDetails;
+
+	FWeaponDefinition()
+	{
+		Item = FItemDefinition();
+		WeaponDetails = FWeaponDetails();
+	}
+};
+
 UCLASS(BlueprintType)
 class AItemBase : public AActor
 {
@@ -96,12 +129,13 @@ public:
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	int Id;
-	
+
+	UFUNCTION(BlueprintCallable)
 	void Load();
-	
-	void AddToDatabase(USQLiteManager* SQLiteConnection);
-	void UpdateDatabase(USQLiteManager* SQLiteConnection);
-	void LoadFromDatabase(USQLiteManager* SQLiteConnection);
+
+	virtual void AddToDatabase(USQLiteManager* SQLiteConnection);
+	virtual void UpdateDatabase(USQLiteManager* SQLiteConnection);
+	virtual void LoadFromDatabase(USQLiteManager* SQLiteConnection);
 
 	void LoadFromDataTable();
 
@@ -141,6 +175,31 @@ public:
 	virtual bool CanInteract(AActor* Interactor) const override;
 	
 };
+
+UCLASS(BlueprintType)
+class AWeapon : public AItemBase
+{
+	GENERATED_BODY()
+public:
+
+	AWeapon();
+
+	UPROPERTY(EditAnywhere,BlueprintReadWrite)
+	FWeaponDetails WeaponDetails;
+
+	virtual void AddToDatabase(USQLiteManager* SQLiteConnection) override;
+	virtual void UpdateDatabase(USQLiteManager* SQLiteConnection) override;
+	virtual void LoadFromDatabase(USQLiteManager* SQLiteConnection) override;
+
+	UFUNCTION(CallInEditor)
+	void LoadTest();
+	
+	// virtual void Interact_Implementation(AActor* Interactor) override;
+	// virtual bool CanInteract(AActor* Interactor) const override;
+};
+
+
+
 
 UCLASS(BlueprintType)
 class AAmmunition : public AItemBase
