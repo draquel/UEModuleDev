@@ -12,6 +12,15 @@ class UDamageSystemComponent;
 class UStatsComponent;
 class UInventoryComponent;
 
+UENUM(BlueprintType)
+enum ECharacterMovementSpeed
+{
+	Idle,
+	Walk,
+	Jog,
+	Sprint
+};
+
 UCLASS()
 class CHARACTERSYSTEMS_API ABaseCharacter : public ACharacter, public IDamageable
 {
