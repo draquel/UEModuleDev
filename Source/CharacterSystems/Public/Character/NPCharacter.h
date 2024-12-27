@@ -5,8 +5,26 @@
 #include "CoreMinimal.h"
 #include "BaseCharacter.h"
 #include "Interactable.h"
-#include "Perception/PawnSensingComponent.h"
 #include "NPCharacter.generated.h"
+
+UENUM(BlueprintType)
+enum ENPCState
+{
+	Passive,
+	Attacking,
+	Stunned,
+	Investigating,
+	Dead
+};
+
+UENUM(BlueprintType)
+enum ENPCSense
+{
+	NoSense,
+	Sight,
+	Hearing,
+	Damage	
+};
 
 UCLASS()
 class CHARACTERSYSTEMS_API ANPCharacter : public ABaseCharacter, public IInteractable
@@ -19,8 +37,6 @@ public:
 protected:
 	virtual void BeginPlay() override;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite);
-	UPawnSensingComponent* PawnSensing;	
 
 public:
 	// Called every frame

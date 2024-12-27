@@ -26,7 +26,7 @@ void AThirdPersonPlayer::Interact()
 
 	FHitResult Result;
 	FCollisionQueryParams Params(FName(TEXT("SphereTrace")),false,this);
-	bool bHit = GetWorld()->SweepSingleByChannel(Result,Start,End,FQuat::Identity,ECC_Camera,FCollisionShape::MakeSphere(Radius),Params);
+	bool bHit = GetWorld()->SweepSingleByChannel(Result,Start,End,FQuat::Identity,ECC_Visibility,FCollisionShape::MakeSphere(Radius),Params);
 	IInteractable* Interactable = nullptr;	
 	if(bHit) {
 		Interactable = Cast<IInteractable, AActor>(Result.GetActor());
