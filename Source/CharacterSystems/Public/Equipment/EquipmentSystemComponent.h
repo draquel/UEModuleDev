@@ -8,7 +8,7 @@
 #include "EquipmentSystemComponent.generated.h"
 
 
-UENUM()
+UENUM(BlueprintType)
 enum EEquipmentSocket
 {
 	OneHand,
@@ -69,6 +69,21 @@ public:
 	UFUNCTION(BlueprintCallable)
 	void Sheath(FName SlotName);
 
+	UFUNCTION(BlueprintCallable)
+	bool HasActiveWeapon();
+
+	UFUNCTION(BlueprintCallable)
+	FWeaponDefinition GetActiveWeapon();
+
+	UFUNCTION(BlueprintCallable)
+	FWeaponDefinition GetSocketWeapon(EEquipmentSocket Socket);
+
+	UFUNCTION(BlueprintCallable)
+	bool IsSocketEquiped(EEquipmentSocket Socket);
+
+	UFUNCTION(BlueprintCallable)
+	bool IsSocketActive(EEquipmentSocket Socket);
+	
 protected:
 	// Called when the game starts
 	virtual void BeginPlay() override;
@@ -77,5 +92,6 @@ public:
 	// Called every frame
 	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
 };
+
 
 

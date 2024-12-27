@@ -12,8 +12,7 @@ ABaseCharacter::ABaseCharacter()
 	DamageSystem = CreateDefaultSubobject<UDamageSystemComponent>(TEXT("DamageSystem"));
 	DamageSystem->Stats = Stats;
 	EquipmentSystem = CreateDefaultSubobject<UEquipmentSystemComponent>(TEXT("EquipmentSystem"));
-
-
+	
 	TArray<USceneComponent*> attached = GetMesh()->GetAttachChildren();
 	for (USceneComponent* child : attached)
 	{

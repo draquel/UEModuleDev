@@ -24,16 +24,9 @@ void UEquipmentSystemComponent::Equip(FWeaponDefinition WeaponDefinition, TMap<T
 			Socket = OneHand;
 			break;
 	}
-
 	EquipedWeapons.Add(Socket,FWeaponSlot(WeaponDefinition));
-	if (!MeshComponents.Contains(Socket)) {
-		UE_LOG(LogTemp,Error,TEXT("no meshcomponent for socket: %i"),Socket.GetValue());
-	}else {
-		UE_LOG(LogTemp,Log,TEXT("meshcomponent for socket: %s"),*MeshComponents[Socket]->GetName());
-	}
 	MeshComponents[Socket]->SetStaticMesh(EquipedWeapons[Socket].Definition.Item.Mesh);
 	MeshComponents[Socket]->SetVisibility(true);
-	UE_LOG(LogTemp, Warning, TEXT("Equiped weapon: %s"),*EquipedWeapons[Socket].Definition.Item.Name.ToString());
 }
 
 void UEquipmentSystemComponent::Unequip(EEquipmentSocket Socket, TMap<TEnumAsByte<EEquipmentSocket>, UStaticMeshComponent*> MeshComponents)
@@ -51,6 +44,51 @@ void UEquipmentSystemComponent::Unsheath(FName SlotName)
 void UEquipmentSystemComponent::Sheath(FName SlotName)
 {
 	
+}
+
+bool UEquipmentSystemComponent::HasActiveWeapon()
+{
+	if (!EquipedWeapons.IsEmpty()) {
+		for (auto weapon : EquipedWeapons)	{
+			if (weapon.Value.Active == true) {
+				return true;
+			}
+		}
+	}
+	return false;
+}
+
+FWeaponDefinition UEquipmentSystemComponent::GetActiveWeapon()
+{
+	if (EquipedWeapons.Num() > 0) {
+		for (auto weapon : EquipedWeapons)	{
+			if (weapon.Value.Active) {
+				return weapon.Value.Definition;
+			}
+		}
+	}
+	return FWeaponDefinition();	
+}
+
+FWeaponDefinition UEquipmentSystemComponent::GetSocketWeapon(EEquipmentSocket Socket)
+{
+	if (IsSocketEquiped(Socket)) {
+		return EquipedWeapons.Find(Socket)->Definition;
+	}
+	return FWeaponDefinition();
+}
+
+bool UEquipmentSystemComponent::IsSocketEquiped(EEquipmentSocket Socket)
+{
+	return EquipedWeapons.Contains(Socket);
+}
+
+bool UEquipmentSystemComponent::IsSocketActive(EEquipmentSocket Socket)
+{
+	if (IsSocketEquiped(Socket)) {
+		return EquipedWeapons.Find(Socket)->Active;
+	}
+	return false;
 }
 
 void UEquipmentSystemComponent::BeginPlay()
