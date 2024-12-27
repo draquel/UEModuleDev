@@ -190,7 +190,6 @@ void AInfiniteTerrain::UpdateChunks()
 	}
 	
 	double end = FPlatformTime::Seconds();
-
 	UE_LOG(TerrainGenerator,Log,TEXT("InfiniteTerrain::UpdateChunks() ==> Queues(toAdd: %d toUpdate: %d toDisable: %d toRemove: %d), Chunks(Loaded: %d Hidden: %d Total: %d) RunTime: %fs"),newCount,updateCount,disableCount,removeCount,TerrainChunkMap.Num()-(disabledKeys.Num()+removeCount),disabledKeys.Num()+removeCount,TerrainChunkMap.Num(),end-start);
 }
 
@@ -308,9 +307,6 @@ FVector AInfiniteTerrain::GetPlayerPos() const
 
 		if (ViewportClient) {
 			return ViewportClient->GetViewLocation();
-			// FRotator CameraRotation = ViewportClient->GetViewRotation();
-			// UE_LOG(LogTemp, Log, TEXT("Editor Camera Location: %s"), *CameraLocation.ToString());
-			// UE_LOG(LogTemp, Log, TEXT("Editor Camera Rotation: %s"), *CameraRotation.ToString());
 		}
 	}
 #endif
@@ -319,8 +315,7 @@ FVector AInfiniteTerrain::GetPlayerPos() const
 
 bool AInfiniteTerrain::PlayerUpdateDistanceCheck() const
 {
-	return FVector::Distance(PlayerPositionLastUpdate, GetPlayerPos()) >
-		TerrainChunkSettings.QuadTreeSettings.MinSize * (TerrainChunkSettings.QuadTreeSettings.DistanceModifier == 1 ? 1 : TerrainChunkSettings.QuadTreeSettings.DistanceModifier-1) * 1.5;
+	return FVector::Distance(PlayerPositionLastUpdate, GetPlayerPos()) > TerrainChunkSettings.QuadTreeSettings.MinSize * (TerrainChunkSettings.QuadTreeSettings.DistanceModifier == 1 ? 1 : TerrainChunkSettings.QuadTreeSettings.DistanceModifier-1) * 1.5;
 }
 
 void AInfiniteTerrain::ShowChunkBorders()
