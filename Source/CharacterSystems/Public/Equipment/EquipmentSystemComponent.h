@@ -9,10 +9,10 @@
 
 
 UENUM(BlueprintType)
-enum EEquipmentSocket
+enum EEquipmentSocket : uint8
 {
-	OneHand,
-	TwoHand
+	OneHand = 0,
+	TwoHand = 1
 };
 
 
@@ -44,30 +44,32 @@ class CHARACTERSYSTEMS_API UEquipmentSystemComponent : public UActorComponent
 	GENERATED_BODY()
 
 public:
-	//										 onehand			two-hand / bow
-	// const TArray<FName> EquipmentSockets = { "spine_02Socket", "clavicle_rSocket" };
+
+	UEquipmentSystemComponent();
+	
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
 	TMap<TEnumAsByte<EEquipmentSocket>,FName> EquipmentSockets = { {OneHand,"spine_02Socket"}, {TwoHand,"clavicle_rSocket"} };
-
+	
 	UPROPERTY(VisibleAnywhere,BlueprintReadOnly)
 	FName MainHandSocketName = FName("hand_rSocket");
 
-	UEquipmentSystemComponent();
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
+	TMap<TEnumAsByte<EEquipmentSocket>, UStaticMeshComponent*> EquipmentMeshComponents;
 	
 	UPROPERTY(EditAnywhere,BlueprintReadWrite)
 	TMap<TEnumAsByte<EEquipmentSocket>,FWeaponSlot> EquipedWeapons;
 
 	UFUNCTION(BlueprintCallable)
-	void Equip(FWeaponDefinition WeaponDefinition,TMap<TEnumAsByte<EEquipmentSocket>, UStaticMeshComponent*> MeshComponents);
+	void Equip(FWeaponDefinition WeaponDefinition);
 	//
 	UFUNCTION(BlueprintCallable)
-	void Unequip(EEquipmentSocket Socket, TMap<TEnumAsByte<EEquipmentSocket>, UStaticMeshComponent*> MeshComponents);
+	void Unequip(EEquipmentSocket Socket);
 	
 	UFUNCTION(BlueprintCallable)
-	void Unsheath(FName SlotName);
+	void Unsheath(EEquipmentSocket Socket);
 	
 	UFUNCTION(BlueprintCallable)
-	void Sheath(FName SlotName);
+	void Sheath(EEquipmentSocket Socket);
 
 	UFUNCTION(BlueprintCallable)
 	bool HasActiveWeapon();
@@ -91,7 +93,9 @@ protected:
 public:
 	// Called every frame
 	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
-};
 
+	UFUNCTION(BlueprintCallable)
+	void GenerateEquipmentSMCs(AActor* Owner, USkeletalMeshComponent* SKM);
+};
 
 

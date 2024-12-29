@@ -29,14 +29,10 @@ class CHARACTERSYSTEMS_API ABaseCharacter : public ACharacter, public IDamageabl
 public:
 	// Sets default values for this character's properties
 	ABaseCharacter();
-
+	
 protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
-
-
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="CharacterComponents")
-	TMap<TEnumAsByte<EEquipmentSocket>, UStaticMeshComponent*> EquipmentMeshComponents;
 	
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = CharacterComponents, meta = (AllowPrivateAccess = "true"))
 	UInventoryComponent* Inventory;

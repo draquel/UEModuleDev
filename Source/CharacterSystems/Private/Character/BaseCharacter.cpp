@@ -12,27 +12,6 @@ ABaseCharacter::ABaseCharacter()
 	DamageSystem = CreateDefaultSubobject<UDamageSystemComponent>(TEXT("DamageSystem"));
 	DamageSystem->Stats = Stats;
 	EquipmentSystem = CreateDefaultSubobject<UEquipmentSystemComponent>(TEXT("EquipmentSystem"));
-	
-	TArray<USceneComponent*> attached = GetMesh()->GetAttachChildren();
-	for (USceneComponent* child : attached)
-	{
-		if (child->IsA<UStaticMeshComponent>())	{
-			child->DestroyComponent();
-		}
-	}
-	EquipmentMeshComponents.Reset();
-	for (auto socket : EquipmentSystem->EquipmentSockets) {
-		FName componentName = FName("StaticMeshComponent_"+FString::FromInt(socket.Key.GetIntValue()));
-		EquipmentMeshComponents.Add(socket.Key, CreateDefaultSubobject<UStaticMeshComponent>(componentName));
-		EquipmentMeshComponents[socket.Key]->SetupAttachment(GetMesh(),socket.Value);
-		EquipmentMeshComponents[socket.Key]->SetVisibility(false);
-		UE_LOG(LogTemp, Display, TEXT("Equipment Mesh Setup - %s"),*FString::FromInt(socket.Key.GetIntValue()));
-	}
-	
-	AddOwnedComponent(EquipmentSystem);
-	AddOwnedComponent(Stats);
-	AddOwnedComponent(DamageSystem);
-	AddOwnedComponent(Inventory);
 }
 
 void ABaseCharacter::BeginPlay()
@@ -100,4 +79,3 @@ void ABaseCharacter::DamageResponse(EDamageResponse Response)
 {
 	
 }
-
