@@ -26,6 +26,7 @@ enum EItemType{
 
 UENUM(BlueprintType)
 enum EWeaponType{
+	NoWeapon UMETA(DisplayName="None"),
 	One_Hand UMETA(DisplayName="One Hand"),
 	Off_Hand UMETA(DisplayName="Off Hand"),
 	Two_Hand UMETA(DisplayName="Two Hand"),
@@ -111,6 +112,11 @@ class AItemBase : public AActor
 public:
 	AItemBase();
 
+	FString DatabasePath = "Database/data.db3";
+	
+	UPROPERTY()
+	USQLiteManager* SQLiteConnection;
+
 	virtual void OnConstruction(const FTransform& Transform) override;
 
 	virtual void BeginPlay() override;
@@ -159,6 +165,7 @@ class AItem : public AItemBase, public IPickupable{
 		// virtual void Drop(UInventoryComponent* InventoryComponent) override;
 };
 
+
 UCLASS(BlueprintType)
 class AContainer : public AItemBase, public IInteractable
 {
@@ -173,11 +180,10 @@ public:
 
 	virtual void Interact_Implementation(AActor* Interactor) override;
 	virtual bool CanInteract(AActor* Interactor) const override;
-	
 };
 
 UCLASS(BlueprintType)
-class AWeapon : public AItemBase
+class AWeapon : public AItemBase, public IPickupable
 {
 	GENERATED_BODY()
 public:
@@ -193,8 +199,12 @@ public:
 
 	UFUNCTION(CallInEditor)
 	void LoadTest();
+
+	UFUNCTION(CallInEditor)
+	void UpdateDefinition();
 	
 	// virtual void Interact_Implementation(AActor* Interactor) override;
+	virtual void Pickup_Implementation(UInventoryComponent* InventoryComponent) override;
 	// virtual bool CanInteract(AActor* Interactor) const override;
 };
 

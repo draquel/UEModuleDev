@@ -31,6 +31,6 @@ public:
 	
 	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
 	float Heal(float Amount);
-	UFUNCTION(blueprintCallable, BlueprintNativeEvent)
+	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
 	float Damage(FDamageInfo DamageInfo);
 };

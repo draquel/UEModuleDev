@@ -34,19 +34,19 @@ protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
 	
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = CharacterComponents, meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = BaseCharacter, meta = (AllowPrivateAccess = "true"))
 	UInventoryComponent* Inventory;
 
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = CharacterComponents, meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = BaseCharacter, meta = (AllowPrivateAccess = "true"))
 	UStatsComponent* Stats;
 
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = CharacterComponents, meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = BaseCharacter, meta = (AllowPrivateAccess = "true"))
 	UDamageSystemComponent* DamageSystem;
 
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = CharacterComponents, meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = BaseCharacter, meta = (AllowPrivateAccess = "true"))
 	UEquipmentSystemComponent* EquipmentSystem;
 	
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Character)
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = BaseCharacter)
 	bool IsAlive = true;
 
 public:
@@ -56,25 +56,25 @@ public:
 	// Called to bind functionality to input
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
 
-	UFUNCTION(BlueprintCallable, Category = Character)
+	UFUNCTION(BlueprintCallable, Category = BaseCharacter)
 	FVector GetForwardPos(int Range = 250);
 
-	UFUNCTION(BlueprintCallable, Category = Character)
+	UFUNCTION(BlueprintCallable, Category = BaseCharacter)
 	void SetRagDoll(bool Enable);
 
-	UFUNCTION(BlueprintCallable, Category = Character)
+	UFUNCTION(BlueprintCallable, Category = BaseCharacter)
 	virtual float GetHealth_Implementation() override;
-	UFUNCTION(BlueprintCallable, Category = Character)
+	UFUNCTION(BlueprintCallable, Category = BaseCharacter)
 	virtual float GetMaxHealth_Implementation() override;
-	UFUNCTION(BlueprintCallable, Category = Character)
+	UFUNCTION(BlueprintCallable, Category = BaseCharacter)
 	virtual float Heal_Implementation(float Amount) override;
-	UFUNCTION(BlueprintCallable, Category = Character)
+	UFUNCTION(BlueprintCallable, Category = BaseCharacter)
 	virtual float Damage_Implementation(FDamageInfo DamageInfo) override;
 
-	UFUNCTION(BlueprintCallable, Category = Character)
+	UFUNCTION(BlueprintCallable, Category = BaseCharacter)
 	virtual void Death();
-	UFUNCTION(BlueprintCallable, Category = Character)
+	UFUNCTION(BlueprintCallable, Category = BaseCharacter)
 	void Block(bool CanBeParried);
-	UFUNCTION()
+	UFUNCTION(BlueprintCallable, Category = BaseCharacter)
 	void DamageResponse(EDamageResponse Response);
 };

@@ -53,6 +53,9 @@ public:
 	UPROPERTY(VisibleAnywhere,BlueprintReadOnly)
 	FName MainHandSocketName = FName("hand_rSocket");
 
+	UPROPERTY(VisibleAnywhere,BlueprintReadOnly)
+	FName OffHandSocketName = FName("hand_lSocket");
+
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
 	TMap<TEnumAsByte<EEquipmentSocket>, UStaticMeshComponent*> EquipmentMeshComponents;
 	
@@ -72,6 +75,9 @@ public:
 	void Sheath(EEquipmentSocket Socket);
 
 	UFUNCTION(BlueprintCallable)
+	void ToggleEquipmentSocket(EEquipmentSocket Socket);
+	
+	UFUNCTION(BlueprintCallable)
 	bool HasActiveWeapon();
 
 	UFUNCTION(BlueprintCallable)
@@ -79,6 +85,9 @@ public:
 
 	UFUNCTION(BlueprintCallable)
 	FWeaponDefinition GetSocketWeapon(EEquipmentSocket Socket);
+
+	UFUNCTION(BlueprintCallable)
+	EWeaponType GetSocketWeaponType(EEquipmentSocket Socket);
 
 	UFUNCTION(BlueprintCallable)
 	bool IsSocketEquiped(EEquipmentSocket Socket);
@@ -90,6 +99,12 @@ protected:
 	// Called when the game starts
 	virtual void BeginPlay() override;
 
+	UPROPERTY()
+	AActor* OwnerActor = nullptr;
+
+	UPROPERTY()
+	USkeletalMeshComponent* SkeletalMeshComponent = nullptr;
+
 public:
 	// Called every frame
 	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
@@ -97,5 +112,4 @@ public:
 	UFUNCTION(BlueprintCallable)
 	void GenerateEquipmentSMCs(AActor* Owner, USkeletalMeshComponent* SKM);
 };
-
 

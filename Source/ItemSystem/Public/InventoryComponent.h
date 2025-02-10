@@ -27,6 +27,8 @@ struct FItemSlot
 	bool IsEmpty() const { return count <= 0; }
 };
 
+DECLARE_DYNAMIC_MULTICAST_DELEGATE(FLootDelegate);
+
 UCLASS(ClassGroup=(Custom), meta=(BlueprintSpawnableComponent))
 class ITEMSYSTEM_API UInventoryComponent : public UActorComponent
 {
@@ -63,6 +65,9 @@ public:
 	int32 SlotsAvailable();
 
 	UFUNCTION(BlueprintCallable, Category="Inventory")
+	bool isSlotEmpty(int SlotIndex);
+	
+	UFUNCTION(BlueprintCallable, Category="Inventory")
 	bool isEmpty();
 
 	UFUNCTION(BlueprintCallable, Category="Inventory")
@@ -73,7 +78,9 @@ public:
 
 	// UFUNCTION(BlueprintCallable, Category="Inventory")
 	// void Transfer(UInventoryComponent* Destination, int SlotIndex);
-
+	
+	UPROPERTY(BlueprintAssignable)
+	FLootDelegate OnLoot;
 	
 	
 protected:

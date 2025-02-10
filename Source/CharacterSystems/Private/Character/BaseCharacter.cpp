@@ -21,6 +21,8 @@ void ABaseCharacter::BeginPlay()
 	DamageSystem->OnDeath.AddDynamic(this, &ABaseCharacter::Death);
 	DamageSystem->OnBlock.AddDynamic(this, &ABaseCharacter::Block);
 	DamageSystem->OnDamage.AddDynamic(this, &ABaseCharacter::DamageResponse);
+
+	EquipmentSystem->GenerateEquipmentSMCs(this,GetMesh());
 }
 
 void ABaseCharacter::Tick(float DeltaTime)

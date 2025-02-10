@@ -53,11 +53,14 @@ public:
 	// Sets default values for this character's properties
 	AThirdPersonPlayer();
 
-	UFUNCTION(BlueprintCallable, Category = Player, meta = (AllowPrivateAccess = "true"))
-	void Interact();
+	// UFUNCTION(BlueprintCallable, Category = Player, meta = (AllowPrivateAccess = "true"))
+	// void Interact();
 
-	UFUNCTION(BlueprintCallable, Category = Player, meta = (AllowPrivateAccess = "true"))
-	void DropNextItem();
+	// UFUNCTION(BlueprintCallable, Category = Player, meta = (AllowPrivateAccess = "true"))
+	// void DropNextItem();
+
+	// UFUNCTION(BlueprintCallable, Category = Player, meta = (AllowPrivateAccess = "true"))
+	// void DropItem(int SlotIndex);
 
 protected:
 	/** Called for movement input */

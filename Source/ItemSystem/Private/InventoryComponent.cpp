@@ -68,6 +68,12 @@ int32 UInventoryComponent::SlotsAvailable()
 	return count;
 }
 
+bool UInventoryComponent::isSlotEmpty(int SlotIndex)
+{
+	if (SlotIndex < 0 || SlotIndex >= Items.Num()) { return true; }
+	return Items[SlotIndex].IsEmpty() || Items[SlotIndex].count == 0;
+}
+
 bool UInventoryComponent::isEmpty()
 {
 	for (int i = 0; i < Items.Num(); i++)	{
@@ -134,10 +140,32 @@ void UInventoryComponent::DropItem(FItemDefinition Item)
 {
 	AActor* Owner = GetOwner();
 	FVector SpawnLocation = (Owner->GetActorForwardVector() * 200) + Owner->GetActorLocation();
-	AItem* Spawn = GetWorld()->SpawnActor<AItem>(AItem::StaticClass(),SpawnLocation,FRotator(),FActorSpawnParameters());
-	Spawn->Definition = Item;
-	Spawn->Id = Item.Id;
-	Spawn->Update();
+	switch (Item.Type){
+	case Weapon:
+		{
+			AWeapon* Weapon = GetWorld()->SpawnActor<AWeapon>(AWeapon::StaticClass(),SpawnLocation,FRotator(),FActorSpawnParameters());
+			Weapon->Definition = Item;
+			Weapon->Id = Item.Id;
+			Weapon->Update();
+		}
+		break;
+	case Container:
+		{
+			AContainer* Container = GetWorld()->SpawnActor<AContainer>(AContainer::StaticClass(),SpawnLocation,FRotator(),FActorSpawnParameters());
+			Container->Definition = Item;
+			Container->Id = Item.Id;
+			Container->Update();
+		}
+		break;
+	default:
+		{
+			AItem* Spawn = GetWorld()->SpawnActor<AItem>(AItem::StaticClass(),SpawnLocation,FRotator(),FActorSpawnParameters());
+			Spawn->Definition = Item;
+			Spawn->Id = Item.Id;
+			Spawn->Update();
+		}
+		break;
+	}
 }
 
 FItemSlot UInventoryComponent::RemoveItem(int32 SlotIndex)

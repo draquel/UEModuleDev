@@ -12,37 +12,41 @@
 #include "EnhancedInputSubsystems.h"
 #include "InputActionValue.h"
 #include "Interactable.h"
-#include "InventoryComponent.h"
 #include "Kismet/GameplayStatics.h"
 
 class UInteractable;
 
-void AThirdPersonPlayer::Interact()
-{
-	FVector Start = GetActorLocation();
-	FVector End = (GetActorForwardVector() * InteractRange) + Start;
-	FVector Center = Start + ((End - Start) * 0.5);
-	float Radius = 30.0f;
+// void AThirdPersonPlayer::Interact()
+// {
+// 	FVector Start = GetActorLocation();
+// 	FVector End = (GetActorForwardVector() * InteractRange) + Start;
+// 	FVector Center = Start + ((End - Start) * 0.5);
+// 	float Radius = 30.0f;
+//
+// 	FHitResult Result;
+// 	FCollisionQueryParams Params(FName(TEXT("SphereTrace")),false,this);
+// 	bool bHit = GetWorld()->SweepSingleByChannel(Result,Start,End,FQuat::Identity,ECC_Visibility,FCollisionShape::MakeSphere(Radius),Params);
+// 	IInteractable* Interactable = nullptr;	
+// 	if(bHit) {
+// 		Interactable = Cast<IInteractable, AActor>(Result.GetActor());
+// 		if(Interactable) {
+// 			Interactable->Interact_Implementation(this);
+// 		}
+// 	}
+// 	
+// 	FVector RotationAxis = FVector::CrossProduct(GetActorForwardVector(), FVector::UpVector).GetSafeNormal(); 
+// 	DrawDebugCapsule(GetWorld(),Center,InteractRange/2,Radius,FQuat(RotationAxis,FMath::DegreesToRadians(90.0f)),bHit && Interactable ? FColor::Green : FColor::Red,false,2.0f);
+// }
 
-	FHitResult Result;
-	FCollisionQueryParams Params(FName(TEXT("SphereTrace")),false,this);
-	bool bHit = GetWorld()->SweepSingleByChannel(Result,Start,End,FQuat::Identity,ECC_Visibility,FCollisionShape::MakeSphere(Radius),Params);
-	IInteractable* Interactable = nullptr;	
-	if(bHit) {
-		Interactable = Cast<IInteractable, AActor>(Result.GetActor());
-		if(Interactable) {
-			Interactable->Interact_Implementation(this);
-		}
-	}
-	
-	FVector RotationAxis = FVector::CrossProduct(GetActorForwardVector(), FVector::UpVector).GetSafeNormal(); 
-	DrawDebugCapsule(GetWorld(),Center,InteractRange/2,Radius,FQuat(RotationAxis,FMath::DegreesToRadians(90.0f)),bHit && Interactable ? FColor::Green : FColor::Red,false,2.0f);
-}
-
-void AThirdPersonPlayer::DropNextItem()
-{
-	if(!Inventory->isEmpty()) { Inventory->DropItem(Inventory->RemoveNextItem().ItemDefinition); }
-}
+// void AThirdPersonPlayer::DropNextItem()
+// {
+// 	if(!Inventory->isEmpty()) { Inventory->DropItem(Inventory->RemoveNextItem().ItemDefinition); }
+// }
+//
+// void AThirdPersonPlayer::DropItem(int SlotIndex)
+// {
+// 	if (!Inventory->isSlotEmpty(SlotIndex)){ Inventory->DropItem(Inventory->RemoveItem(SlotIndex).ItemDefinition); }
+// }
 
 AThirdPersonPlayer::AThirdPersonPlayer()
 {
@@ -121,7 +125,7 @@ void AThirdPersonPlayer::SetupPlayerInputComponent(UInputComponent* PlayerInputC
 		EnhancedInputComponent->BindAction(LookAction, ETriggerEvent::Triggered, this, &AThirdPersonPlayer::Look);
 
 		// Interacting 
-		EnhancedInputComponent->BindAction(InteractAction, ETriggerEvent::Triggered, this, &AThirdPersonPlayer::Interact);
+		// EnhancedInputComponent->BindAction(InteractAction, ETriggerEvent::Triggered, this, &AThirdPersonPlayer::Interact);
 	}
 	else
 	{
