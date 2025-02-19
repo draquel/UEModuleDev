@@ -212,7 +212,7 @@ AWeapon::AWeapon()
 void AWeapon::Pickup_Implementation(UInventoryComponent* InventoryComponent)
 {
 	// IPickupable::Pickup_Implementation(InventoryComponent);
-	InventoryComponent->AddItem(Definition);
+	InventoryComponent->AddWeapon(Definition,WeaponDetails);
 	Destroy();
 }
 void AWeapon::AddToDatabase(USQLiteManager* SQLite)

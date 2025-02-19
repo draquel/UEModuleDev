@@ -15,11 +15,14 @@ struct FItemSlot
 	UPROPERTY(EditAnywhere,BlueprintReadWrite)
 	FItemDefinition ItemDefinition;
 	UPROPERTY(EditAnywhere,BlueprintReadWrite)
+	FWeaponDetails WeaponDetails;
+	UPROPERTY(EditAnywhere,BlueprintReadWrite)
 	int32 count;
 
 	FItemSlot()
 	{
 		ItemDefinition = FItemDefinition();
+		WeaponDetails = FWeaponDetails();
 		count = 0;
 		index = 0;
 	}
@@ -44,8 +47,14 @@ public:
 	TArray<FItemSlot> Items;
 
 	UFUNCTION(BlueprintCallable, Category="Inventory")
+	bool AddSlot(FItemSlot Slot);	
+	
+	UFUNCTION(BlueprintCallable, Category="Inventory")
 	bool AddItem(FItemDefinition Item, int32 SlotIndex = -1);
-
+	
+	UFUNCTION(BlueprintCallable, Category="Inventory")
+	bool AddWeapon(FItemDefinition Item, FWeaponDetails WeaponDetails, int32 SlotIndex = -1);
+	
 	UFUNCTION(BlueprintCallable, Category="Inventory")
 	void DropItem(FItemDefinition Item);	
 
@@ -72,12 +81,16 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category="Inventory")
 	bool isFull();
+	bool isSlotFull(int SlotIndex);
 
 	UFUNCTION(BlueprintCallable, Category="Inventory")
 	void DebugList();
 
-	// UFUNCTION(BlueprintCallable, Category="Inventory")
-	// void Transfer(UInventoryComponent* Destination, int SlotIndex);
+	UFUNCTION(BlueprintCallable, Category="Inventory")
+	bool Transfer(UInventoryComponent* Destination, int SlotIndex, int count);
+
+	UFUNCTION(BlueprintCallable, Category="Inventory")
+	bool TransferAll(UInventoryComponent* Destination);
 	
 	UPROPERTY(BlueprintAssignable)
 	FLootDelegate OnLoot;

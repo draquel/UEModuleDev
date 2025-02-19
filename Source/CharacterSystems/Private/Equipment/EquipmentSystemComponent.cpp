@@ -39,15 +39,40 @@ void UEquipmentSystemComponent::Equip(FWeaponDefinition WeaponDefinition)
 	}
 }
 
-void UEquipmentSystemComponent::Unequip(EEquipmentSocket Socket)
+FWeaponDefinition UEquipmentSystemComponent::Unequip(EEquipmentSocket Socket)
 {
 	if (EquipmentMeshComponents.Contains(Socket))
 	{
 		EquipmentMeshComponents[Socket]->SetVisibility(false);
 		EquipmentMeshComponents[Socket]->SetStaticMesh(nullptr);
-		EquipedWeapons.Remove(Socket);	
+		FWeaponDefinition UnequipDefinition = GetSocketWeapon(Socket);
+		EquipedWeapons.Remove(Socket);
+		return UnequipDefinition;	
 	}
+	UE_LOG(LogTemp,Error,TEXT("EquipmentSystemComponent::Socket %i does not contain an equiped Item."),Socket);
+	return FWeaponDefinition();
 }
+
+FWeaponDefinition UEquipmentSystemComponent::UnequipByWeaponType(EWeaponType WeaponType)
+{
+	TEnumAsByte<EEquipmentSocket> Socket;
+	switch (WeaponType) {
+	case One_Hand:
+		Socket = OneHand;
+		break;
+	case Two_Hand:
+		Socket = TwoHand;
+		break;
+	case Bow:
+		Socket = TwoHand;
+		break;
+	default:
+		Socket = OneHand;
+		break;
+	}
+	return Unequip(Socket);
+}
+
 
 void UEquipmentSystemComponent::Unsheath(EEquipmentSocket Socket)
 {

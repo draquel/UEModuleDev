@@ -66,8 +66,10 @@ public:
 	void Equip(FWeaponDefinition WeaponDefinition);
 	//
 	UFUNCTION(BlueprintCallable)
-	void Unequip(EEquipmentSocket Socket);
+	FWeaponDefinition Unequip(EEquipmentSocket Socket);
 	
+	UFUNCTION(BlueprintCallable)
+	FWeaponDefinition UnequipByWeaponType(EWeaponType WeaponType);	
 	UFUNCTION(BlueprintCallable)
 	void Unsheath(EEquipmentSocket Socket);
 	

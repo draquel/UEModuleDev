@@ -74,6 +74,14 @@ bool UInventoryComponent::isSlotEmpty(int SlotIndex)
 	return Items[SlotIndex].IsEmpty() || Items[SlotIndex].count == 0;
 }
 
+bool UInventoryComponent::isSlotFull(int SlotIndex)
+{
+	if (!isSlotEmpty(SlotIndex) && Items[SlotIndex].count == Items[SlotIndex].ItemDefinition.StackSize){
+		return true;
+	}
+	return false;
+}
+
 bool UInventoryComponent::isEmpty()
 {
 	for (int i = 0; i < Items.Num(); i++)	{
@@ -96,6 +104,8 @@ bool UInventoryComponent::isFull()
 	return false;
 }
 
+
+
 void UInventoryComponent::DebugList()
 {
 	if(Items.Num() > 0)	{
@@ -111,6 +121,53 @@ void UInventoryComponent::DebugList()
 		UE_LOG(LogTemp, Display, TEXT(":: Total Count: %d"),count);
 		UE_LOG(LogTemp, Display, TEXT(" -- END Item List -- "));
 	}
+}
+
+bool UInventoryComponent::Transfer(UInventoryComponent* Destination, int SlotIndex, int count)
+{
+	if (Items[SlotIndex].count < count) { return false; }
+	for (int i = 0; i < count; i++)	{
+		bool success = Destination->AddItem(RemoveItem(SlotIndex).ItemDefinition, -1);
+		if (!success) { return false; }
+	}
+	return true;
+}
+
+bool UInventoryComponent::TransferAll(UInventoryComponent* Destination)
+{
+	for (auto ItemSlot : Items)	{
+		bool success = Transfer(Destination, ItemSlot.index, ItemSlot.count);
+		if (!success) { return false; }
+	}
+	return true;
+}
+
+bool UInventoryComponent::AddSlot(FItemSlot Slot)
+{
+	if (Slot.ItemDefinition.Stackable){
+		if(Slot.index < 0 || Slot.index >= MaxItems) {
+			Slot.index = FindItemSlot(&Slot.ItemDefinition);
+			if (Items[Slot.index].ItemDefinition.StackSize <= Items[Slot.index].count + Slot.count)	{
+				Items[Slot.index].count += Slot.count;
+				return true;
+			}
+			
+			Slot.count -= Items[Slot.index].ItemDefinition.StackSize - Items[Slot.index].count;
+			Items[Slot.index].count = Items[Slot.index].ItemDefinition.StackSize;
+			Slot.index = FindEmptySlot();
+			if(Slot.index < 0)	{ return false; } // No Room
+			
+			Items[Slot.index] = Slot;
+			return true;
+		}	
+	}else {
+		if (Slot.index < 0 || Slot.index >= MaxItems){ Slot.index = FindEmptySlot(); }
+		if(Slot.index < 0)	{ return false;	} // No Room
+		Items[Slot.index] = Slot;
+		return true;
+	}
+
+	return false;
 }
 
 bool UInventoryComponent::AddItem(FItemDefinition Item, int32 SlotIndex)
@@ -135,6 +192,31 @@ bool UInventoryComponent::AddItem(FItemDefinition Item, int32 SlotIndex)
 	Items[SlotIndex].count++;
 	return true;
 }
+
+bool UInventoryComponent::AddWeapon(FItemDefinition Item, FWeaponDetails WeaponDetails, int32 SlotIndex)
+{
+	if(SlotIndex < 0 || SlotIndex >= MaxItems){
+		if(Item.Stackable && HasItem(&Item)){
+			SlotIndex = FindItemSlot(&Item); 
+		}else{
+			SlotIndex = FindEmptySlot();
+		}
+	} else {
+		if(Items[SlotIndex].count >= Items[SlotIndex].ItemDefinition.StackSize) {
+			SlotIndex = FindEmptySlot();
+		}
+	}
+
+	if(SlotIndex < 0)	{
+		return false; //Too Full to Add
+	}
+
+	Items[SlotIndex].ItemDefinition = Item;
+	Items[SlotIndex].WeaponDetails = WeaponDetails;
+	Items[SlotIndex].count++;
+	return true;	
+}
+
 
 void UInventoryComponent::DropItem(FItemDefinition Item)
 {
